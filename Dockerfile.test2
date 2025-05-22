@@ -1,0 +1,45 @@
+########################  build stage  ########################
+ARG GO_VERSION=1.24.2
+ARG ROCKSDB_VERSION=10.2.1
+
+FROM golang:${GO_VERSION}-bookworm AS build
+ARG ROCKSDB_VERSION            # объявляем снова в стадии build
+
+# sys-toolchain + deps нужные для RocksDB
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        build-essential cmake git \
+        libgflags-dev libsnappy-dev zlib1g-dev \
+        libbz2-dev liblz4-dev libzstd-dev && \
+    rm -rf /var/lib/apt/lists/*
+
+# ---------- собираем RocksDB ----------
+WORKDIR /deps
+RUN git clone --depth 1 --branch v${ROCKSDB_VERSION} https://github.com/facebook/rocksdb.git
+WORKDIR /deps/rocksdb
+RUN cmake -S . -B build -DPORTABLE=ON -DWITH_TESTS=OFF -DWITH_TOOLS=OFF \
+      -DWITH_JNI=OFF && \
+    cmake --build build -j $(nproc) && \
+    cmake --install build && ldconfig        # .so -> /usr/local/lib
+
+ # ---------- собираем Go-тест ----------
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+RUN CGO_ENABLED=1     CGO_LDFLAGS="-static -lrocksdb" go test -c -o /rocks-tests.test ./internal/clients/rocksDbClient
+
+# ---------- runtime stage ----------
+FROM debian:bookworm-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        libgflags2.2 libsnappy1v5 liblz4-1 libzstd1 zlib1g libbz2-1.0 && \
+    rm -rf /var/lib/apt/lists/*
+
+# Copy *all* of RocksDB’s shared objects—and preserve the SONAME symlinks
+COPY --from=build /usr/local/lib /usr/local/lib
+# Make sure ldconfig picks them up
+RUN ldconfig
+
+COPY --from=build /rocks-tests.test /rocks-tests.test
+
+ENTRYPOINT ["/rocks-tests.test"]

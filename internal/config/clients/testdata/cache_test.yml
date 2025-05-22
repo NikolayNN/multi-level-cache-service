@@ -1,0 +1,54 @@
+# ==== Глобальная конфигурация =====================================
+
+# === L0
+ristretto:
+  enabled: true
+  numCounters: 1_000_000
+  bufferItems: 64
+  maxCost: 64MiB
+  defaultTTL: 15s
+
+# === L1
+redis:
+  enabled: true
+  host: localhost
+  port: 6370
+  password: "12345"
+  db: 0
+  poolSize: 10
+  timeout: 5s
+
+# === L2
+rocksdb:
+  enabled: true
+  path: "/path"
+  createIfMissing: true
+  maxOpenFiles: 100
+  blockSize: 60MiB
+  blockCache: 61MiB
+  writeBufferSize: 62MiB
+
+api:
+  timeout: 5s
+  retries: 3
+
+# ==== Описание отдельных кэшей ===============================================
+
+caches:
+  - name: user
+    prefix: "u"
+    levels:
+      l0:
+        enabled: true
+        ttl: 30s
+      l1:
+        enabled: true
+        ttl: 10m
+      l2:
+        enabled: true
+        ttl: 6h
+    Api:
+      enabled: true
+      getBatch:
+        url: "localhost:8080/user"
+        prop: "id"
