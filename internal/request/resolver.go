@@ -26,7 +26,7 @@ func (s *Service) Resolve(requests []GetCacheReq) []ResolvedGetCacheReq {
 func (s *Service) toResolved(req *GetCacheReq) (ResolvedGetCacheReq, error) {
 
 	return ResolvedGetCacheReq{
-		req:      req,
-		cacheKey: s.prefixService.ToCacheKey(req.CacheName, req.Key),
+		Req:      req,
+		CacheKey: s.prefixService.ToCacheKey(req.CacheName, req.Key),
 	}, nil
 }

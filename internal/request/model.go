@@ -16,36 +16,36 @@ type GetCacheReq struct {
 }
 
 type ResolvedGetCacheReq struct {
-	req      *GetCacheReq
-	cacheKey string
+	Req      *GetCacheReq
+	CacheKey string
 }
 
 func (r *ResolvedGetCacheReq) CacheName() string {
-	return r.req.CacheName
+	return r.Req.CacheName
 }
 
 func (r *ResolvedGetCacheReq) Key() string {
-	return r.req.Key
+	return r.Req.Key
 }
 
-func (r *ResolvedGetCacheReq) CacheKey() string {
-	return r.cacheKey
+func (r *ResolvedGetCacheReq) GetCacheKey() string {
+	return r.CacheKey
 }
 
 type GetCacheResp struct {
-	req   *ResolvedGetCacheReq
-	value string
-	found bool
+	Req   *ResolvedGetCacheReq
+	Value string
+	Found bool
 }
 
 func (r *GetCacheResp) CacheName() string {
-	return r.req.CacheName()
+	return r.Req.CacheName()
 }
 
 func (r *GetCacheResp) Key() string {
-	return r.req.Key()
+	return r.Req.Key()
 }
 
 func (r *GetCacheResp) CacheKey() string {
-	return r.req.CacheName()
+	return r.Req.CacheName()
 }
