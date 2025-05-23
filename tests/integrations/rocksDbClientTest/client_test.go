@@ -1,7 +1,11 @@
+//go:build rocksdb
+// +build rocksdb
+
 package rocksDbClient_test
 
 import (
-	"aur-cache-service/internal/clients/rocksDbClient"
+	"aur-cache-service/internal/config"
+	"aur-cache-service/internal/providers"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -14,16 +18,16 @@ import (
 // 2. docker run --rm rocks-tests
 
 // setupClient создает временную БД и возвращает клиента и функцию очистки
-func setupClient(t *testing.T) (*rocksDbClient.Client, func()) {
+func setupClient(t *testing.T) (*providers.RocksDb, func()) {
 	dir, err := ioutil.TempDir("", "rocksdb-test")
 	if err != nil {
 		t.Fatalf("Не удалось создать временную директорию: %v", err)
 	}
-	cfg := rocksDbClient.Config{
+	cfg := config.RocksDB{
 		Path:            dir,
 		CreateIfMissing: true,
 	}
-	client, err := rocksDbClient.New(cfg)
+	client, err := providers.NewRocksDb(cfg)
 	if err != nil {
 		os.RemoveAll(dir)
 		t.Fatalf("Не удалось создать клиент RocksDB: %v", err)

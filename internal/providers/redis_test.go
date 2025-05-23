@@ -1,6 +1,8 @@
-package redisClient_test
+package providers_test
 
 import (
+	"aur-cache-service/internal/config"
+	"aur-cache-service/internal/providers"
 	"github.com/stretchr/testify/assert"
 	"strconv"
 	"testing"
@@ -8,17 +10,15 @@ import (
 
 	"github.com/alicebob/miniredis/v2"
 	"github.com/stretchr/testify/require"
-
-	"aur-cache-service/internal/clients/redisClient"
 )
 
-func setupMiniRedis(t *testing.T) (*miniredis.Miniredis, *redisClient.Client) {
+func setupMiniRedis(t *testing.T) (*miniredis.Miniredis, *providers.Redis) {
 	mr, err := miniredis.Run()
 	require.NoError(t, err)
 
 	port, err := strconv.Atoi(mr.Port())
 
-	client, err := redisClient.New(redisClient.Config{
+	client, err := providers.NewRedis(config.Redis{
 		Host:     mr.Host(),
 		Port:     port,
 		Password: "",
@@ -38,7 +38,7 @@ func TestNew(t *testing.T) {
 	defer mr.Close()
 
 	port, err := strconv.Atoi(mr.Port())
-	client, err := redisClient.New(redisClient.Config{
+	client, err := providers.NewRedis(config.Redis{
 		Host:     mr.Host(),
 		Port:     port,
 		Password: "",
@@ -50,7 +50,7 @@ func TestNew(t *testing.T) {
 	assert.NotNil(t, client)
 
 	// Проверка с неправильным адресом
-	_, err = redisClient.New(redisClient.Config{
+	_, err = providers.NewRedis(config.Redis{
 		Host:     "non_existent_host",
 		Port:     12345,
 		Password: "",

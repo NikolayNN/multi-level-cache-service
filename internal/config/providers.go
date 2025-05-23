@@ -26,20 +26,20 @@ type Provider interface {
 
 /* ---------- конкретные типы ---------- */
 
-type RistrettoProvider struct {
+type Ristretto struct {
 	ProviderMeta `yaml:",inline"`
 
 	NumCounters int64         `yaml:"numCounters"`
-	BufferItems int           `yaml:"bufferItems"`
+	BufferItems int64         `yaml:"bufferItems"`
 	MaxCost     string        `yaml:"maxCost"`
 	DefaultTTL  time.Duration `yaml:"defaultTTL"`
 }
 
-func (r *RistrettoProvider) MaxCostBytes() uint64 {
+func (r *Ristretto) MaxCostBytes() uint64 {
 	return ParseBytesStr(r.MaxCost, r.Name+" -> maxCost")
 }
 
-type RedisProvider struct {
+type Redis struct {
 	ProviderMeta `yaml:",inline"`
 
 	Host     string        `yaml:"host"`
@@ -50,7 +50,7 @@ type RedisProvider struct {
 	Timeout  time.Duration `yaml:"timeout"`
 }
 
-type RocksDBProvider struct {
+type RocksDB struct {
 	ProviderMeta `yaml:",inline"`
 
 	Path            string `yaml:"path"`
@@ -61,14 +61,14 @@ type RocksDBProvider struct {
 	WriteBufferSize string `yaml:"writeBufferSize"`
 }
 
-func (r *RocksDBProvider) BlockSizeBytes() uint64 {
+func (r *RocksDB) BlockSizeBytes() uint64 {
 	return ParseBytesStr(r.BlockSize, r.Name+" -> blockSize")
 }
-func (r *RocksDBProvider) BlockCacheBytes() uint64 {
+func (r *RocksDB) BlockCacheBytes() uint64 {
 	return ParseBytesStr(r.BlockCache, r.Name+" -> blockCache")
 }
 
-func (r *RocksDBProvider) WriteBufferSizeBytes() uint64 {
+func (r *RocksDB) WriteBufferSizeBytes() uint64 {
 	return ParseBytesStr(r.WriteBufferSize, r.Name+" -> writeBufferSize")
 }
 
@@ -97,11 +97,11 @@ func (pc *ProvidersConfig) UnmarshalYAML(value *yaml.Node) error {
 		var p Provider
 		switch meta.Type {
 		case "ristretto":
-			p = &RistrettoProvider{}
+			p = &Ristretto{}
 		case "redis":
-			p = &RedisProvider{}
+			p = &Redis{}
 		case "rocksdb":
-			p = &RocksDBProvider{}
+			p = &RocksDB{}
 		default:
 			return fmt.Errorf("unknown provider type: %s", meta.Type)
 		}

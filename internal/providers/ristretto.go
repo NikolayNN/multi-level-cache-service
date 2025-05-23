@@ -1,24 +1,19 @@
-package ristrettoClient
+package providers
 
 import (
+	"aur-cache-service/internal/config"
 	"github.com/dgraph-io/ristretto"
 	"time"
 )
-
-type Config struct {
-	MaxCost     int64
-	NumCounters int64
-	BufferItems int64
-}
 
 type Client struct {
 	cache *ristretto.Cache
 }
 
-func New(cfg Config) (*Client, error) {
+func NewRistretto(cfg config.Ristretto) (*Client, error) {
 	cache, err := ristretto.NewCache(&ristretto.Config{
 		NumCounters: cfg.NumCounters,
-		MaxCost:     cfg.MaxCost,
+		MaxCost:     int64(cfg.MaxCostBytes()),
 		BufferItems: cfg.BufferItems,
 	})
 	if err != nil {

@@ -1,27 +1,19 @@
-package redisClient
+package providers
 
 import (
+	"aur-cache-service/internal/config"
 	"context"
 	"fmt"
 	"github.com/redis/go-redis/v9"
 	"time"
 )
 
-type Config struct {
-	Host     string
-	Port     int
-	Password string
-	DB       int
-	PoolSize int
-	Timeout  time.Duration
-}
-
-type Client struct {
+type Redis struct {
 	rdb *redis.Client
 	ctx context.Context
 }
 
-func New(cfg Config) (*Client, error) {
+func NewRedis(cfg config.Redis) (*Redis, error) {
 	ctx := context.Background()
 
 	rdb := redis.NewClient(&redis.Options{
@@ -38,14 +30,14 @@ func New(cfg Config) (*Client, error) {
 		return nil, fmt.Errorf("не удалось подключиться к Redis: %w", err)
 	}
 
-	return &Client{
+	return &Redis{
 		rdb: rdb,
 		ctx: ctx,
 	}, nil
 }
 
 // Get получает значение по ключу из Redis (string версия)
-func (c *Client) Get(key string) (string, bool, error) {
+func (c *Redis) Get(key string) (string, bool, error) {
 	val, err := c.rdb.Get(c.ctx, key).Result()
 	if err != nil {
 		if err == redis.Nil {
@@ -58,7 +50,7 @@ func (c *Client) Get(key string) (string, bool, error) {
 }
 
 // Put сохраняет значение по ключу в Redis с опциональным TTL (string версия)
-func (c *Client) Put(key string, value string, ttl int) error {
+func (c *Redis) Put(key string, value string, ttl int) error {
 	var expiration time.Duration
 	if ttl > 0 {
 		expiration = time.Duration(ttl) * time.Second
@@ -72,7 +64,7 @@ func (c *Client) Put(key string, value string, ttl int) error {
 }
 
 // Delete удаляет значение по ключу из Redis
-func (c *Client) Delete(key string) (bool, error) {
+func (c *Redis) Delete(key string) (bool, error) {
 	res, err := c.rdb.Del(c.ctx, key).Result()
 	if err != nil {
 		return false, fmt.Errorf("error delete value from Redis: %w", err)
@@ -82,7 +74,7 @@ func (c *Client) Delete(key string) (bool, error) {
 }
 
 // BatchGet получает несколько значений за один запрос
-func (c *Client) BatchGet(keys []string) (map[string]string, error) {
+func (c *Redis) BatchGet(keys []string) (map[string]string, error) {
 	if len(keys) == 0 {
 		return make(map[string]string), nil
 	}
@@ -106,7 +98,7 @@ func (c *Client) BatchGet(keys []string) (map[string]string, error) {
 }
 
 // BatchPut сохраняет несколько значений за один запрос
-func (c *Client) BatchPut(items map[string]string, ttls map[string]int) error {
+func (c *Redis) BatchPut(items map[string]string, ttls map[string]int) error {
 	if len(items) == 0 {
 		return nil
 	}
@@ -130,7 +122,7 @@ func (c *Client) BatchPut(items map[string]string, ttls map[string]int) error {
 }
 
 // BatchDelete удаляет несколько значений за один запрос
-func (c *Client) BatchDelete(keys []string) error {
+func (c *Redis) BatchDelete(keys []string) error {
 	if len(keys) == 0 {
 		return nil
 	}
@@ -144,6 +136,6 @@ func (c *Client) BatchDelete(keys []string) error {
 	return nil
 }
 
-func (c *Client) Close() error {
+func (c *Redis) Close() error {
 	return c.rdb.Close()
 }

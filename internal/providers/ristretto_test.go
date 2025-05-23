@@ -1,16 +1,17 @@
-package ristrettoClient_test
+package providers_test
 
 import (
-	"aur-cache-service/internal/clients/ristrettoClient"
+	"aur-cache-service/internal/config"
+	"aur-cache-service/internal/providers"
 	"github.com/stretchr/testify/require"
 	"testing"
 	"time"
 )
 
-func newTestClient(t *testing.T) *ristrettoClient.Client {
-	client, err := ristrettoClient.New(ristrettoClient.Config{
+func newTestClient(t *testing.T) *providers.Client {
+	client, err := providers.NewRistretto(config.Ristretto{
 		NumCounters: 1000,
-		MaxCost:     1 << 20,
+		MaxCost:     "20MiB",
 		BufferItems: 64,
 	})
 	require.NoError(t, err)

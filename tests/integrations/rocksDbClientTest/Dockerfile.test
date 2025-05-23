@@ -28,7 +28,7 @@ RUN go mod download
 COPY ../../ .
 
 COPY tests/integrations/rocksDbClientTest/client_test.go ./internal/clients/rocksDbClient/client_test.go
-RUN CGO_ENABLED=1 CGO_LDFLAGS="-static -lrocksdb" go test -c -o /rocks-tests.test ./internal/clients/rocksDbClient
+RUN CGO_ENABLED=1 CGO_LDFLAGS="-static -lrocksdb" go test -tags=rocksdb -c -o /rocks-tests.test ./internal/clients/rocksDbClient
 
 # ---------- runtime stage ----------
 FROM debian:bookworm-slim

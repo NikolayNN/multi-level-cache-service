@@ -18,7 +18,7 @@ func TestLoadConfig_Success(t *testing.T) {
 		fmt.Printf("%+v\n", p)
 	}
 
-	expectedl0 := &config.RistrettoProvider{
+	expectedl0 := &config.Ristretto{
 		ProviderMeta: config.ProviderMeta{
 			Name: "ristretto-l0",
 			Type: "ristretto",
@@ -31,7 +31,7 @@ func TestLoadConfig_Success(t *testing.T) {
 
 	assert.Equal(t, expectedl0, actual.Providers[0])
 
-	expectedl1 := &config.RedisProvider{
+	expectedl1 := &config.Redis{
 		ProviderMeta: config.ProviderMeta{
 			Name: "redis-l1",
 			Type: "redis",
@@ -46,7 +46,7 @@ func TestLoadConfig_Success(t *testing.T) {
 
 	assert.Equal(t, expectedl1, actual.Providers[1])
 
-	expectedl2 := &config.RocksDBProvider{
+	expectedl2 := &config.RocksDB{
 		ProviderMeta: config.ProviderMeta{
 			Name: "rocksdb-l2",
 			Type: "rocksdb",

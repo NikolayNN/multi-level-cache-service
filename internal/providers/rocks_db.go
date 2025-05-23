@@ -1,4 +1,7 @@
-package rocksDbClient
+//go:build rocksdb
+// +build rocksdb
+
+package providers
 
 import (
 	"aur-cache-service/internal/config"
@@ -9,15 +12,15 @@ import (
 	"github.com/linxGnu/grocksdb"
 )
 
-type Client struct {
+type RocksDb struct {
 	db        *grocksdb.DB
 	readOpts  *grocksdb.ReadOptions
 	writeOpts *grocksdb.WriteOptions
 	ttlCache  map[string]time.Time // Простой кэш TTL в памяти
 }
 
-// New создает новый клиент RocksDB
-func New(cfg config.RocksDBProvider) (*Client, error) {
+// NewRocksDb создает новый клиент RocksDB
+func NewRocksDb(cfg config.RocksDB) (*RocksDb, error) {
 	// Настройка опций базы данных
 	bbto := grocksdb.NewDefaultBlockBasedTableOptions()
 	if cfg.BlockSizeBytes() > 0 {
@@ -45,7 +48,7 @@ func New(cfg config.RocksDBProvider) (*Client, error) {
 	}
 
 	// Создание объекта клиента
-	return &Client{
+	return &RocksDb{
 		db:        db,
 		readOpts:  grocksdb.NewDefaultReadOptions(),
 		writeOpts: grocksdb.NewDefaultWriteOptions(),
@@ -54,7 +57,7 @@ func New(cfg config.RocksDBProvider) (*Client, error) {
 }
 
 // Get получает значение по ключу
-func (c *Client) Get(key string) (string, bool, error) {
+func (c *RocksDb) Get(key string) (string, bool, error) {
 	// Проверка TTL
 	if c.isExpired(key) {
 		c.Delete(key)
@@ -76,7 +79,7 @@ func (c *Client) Get(key string) (string, bool, error) {
 }
 
 // Put сохраняет значение по ключу с опциональным TTL
-func (c *Client) Put(key string, value string, ttl int) error {
+func (c *RocksDb) Put(key string, value string, ttl int) error {
 	// Сохранение значения
 	err := c.db.Put(c.writeOpts, []byte(key), []byte(value))
 	if err != nil {
@@ -101,7 +104,7 @@ func (c *Client) Put(key string, value string, ttl int) error {
 }
 
 // Delete удаляет значение по ключу
-func (c *Client) Delete(key string) (bool, error) {
+func (c *RocksDb) Delete(key string) (bool, error) {
 	// Проверяем существование ключа перед удалением
 	slice, err := c.db.Get(c.readOpts, []byte(key))
 	if err != nil {
@@ -129,7 +132,7 @@ func (c *Client) Delete(key string) (bool, error) {
 }
 
 // BatchGet получает несколько значений за один запрос
-func (c *Client) BatchGet(keys []string) (map[string]string, error) {
+func (c *RocksDb) BatchGet(keys []string) (map[string]string, error) {
 	if len(keys) == 0 {
 		return make(map[string]string), nil
 	}
@@ -159,7 +162,7 @@ func (c *Client) BatchGet(keys []string) (map[string]string, error) {
 }
 
 // BatchPut сохраняет несколько значений за один запрос
-func (c *Client) BatchPut(items map[string]string, ttls map[string]int) error {
+func (c *RocksDb) BatchPut(items map[string]string, ttls map[string]int) error {
 	if len(items) == 0 {
 		return nil
 	}
@@ -206,7 +209,7 @@ func (c *Client) BatchPut(items map[string]string, ttls map[string]int) error {
 }
 
 // BatchDelete удаляет несколько значений за один запрос
-func (c *Client) BatchDelete(keys []string) error {
+func (c *RocksDb) BatchDelete(keys []string) error {
 	if len(keys) == 0 {
 		return nil
 	}
@@ -247,7 +250,7 @@ func (c *Client) BatchDelete(keys []string) error {
 }
 
 // Close закрывает соединение с базой данных
-func (c *Client) Close() error {
+func (c *RocksDb) Close() error {
 	c.readOpts.Destroy()
 	c.writeOpts.Destroy()
 	c.db.Close()
@@ -255,7 +258,7 @@ func (c *Client) Close() error {
 }
 
 // isExpired проверяет, истек ли срок действия ключа
-func (c *Client) isExpired(key string) bool {
+func (c *RocksDb) isExpired(key string) bool {
 	// Проверка в кэше в памяти
 	if expTime, exists := c.ttlCache[key]; exists {
 		if time.Now().After(expTime) {

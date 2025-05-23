@@ -1,4 +1,4 @@
-package common
+package providers
 
 import (
 	"aur-cache-service/internal/request"
@@ -51,7 +51,7 @@ func TestCacheService_Get_KeyExists(t *testing.T) {
 		},
 	}
 
-	service := NewCacheService(mockClient)
+	service := NewService(mockClient)
 	req := &request.ResolvedGetCacheReq{
 		Req: &request.GetCacheReq{
 			CacheName: "user",
@@ -77,7 +77,7 @@ func TestCacheService_Get_KeyNotExists(t *testing.T) {
 		},
 	}
 
-	service := NewCacheService(mockClient)
+	service := NewService(mockClient)
 	req := &request.ResolvedGetCacheReq{
 		Req: &request.GetCacheReq{
 			CacheName: "user",
@@ -103,7 +103,7 @@ func TestCacheService_BatchGet_allExists(t *testing.T) {
 		},
 	}
 
-	service := NewCacheService(mockClient)
+	service := NewService(mockClient)
 
 	reqs := []request.ResolvedGetCacheReq{
 		{
@@ -140,7 +140,7 @@ func TestCacheService_BatchGet_oneNotExists(t *testing.T) {
 		},
 	}
 
-	service := NewCacheService(mockClient)
+	service := NewService(mockClient)
 
 	reqs := []request.ResolvedGetCacheReq{
 		{

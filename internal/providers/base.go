@@ -1,6 +1,6 @@
-package common
+package providers
 
-type CacheClient interface {
+type BaseCacheProvider interface {
 	Get(key string) (string, bool, error)
 	Put(key string, value string, ttl int) error
 	Delete(key string) (bool, error)
@@ -10,4 +10,9 @@ type CacheClient interface {
 	BatchDelete(keys []string) error
 
 	Close() error
+}
+
+type ApiClient interface {
+	Get(key string) (string, bool, error)
+	BatchGet(keys []string) (map[string]string, error)
 }

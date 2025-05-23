@@ -1,9 +1,8 @@
 package main
 
 import (
-	"aur-cache-service/internal/clients/redisClient"
-	"aur-cache-service/internal/clients/ristrettoClient"
 	"aur-cache-service/internal/config"
+	"aur-cache-service/internal/providers"
 	"fmt"
 	"log"
 	"time"
@@ -26,13 +25,13 @@ func testLoadCacheConfig() {
 }
 
 func testRistretto() {
-	ristrettoConfig := ristrettoClient.Config{
+	ristrettoConfig := config.Ristretto{
 		NumCounters: 10000,
 		BufferItems: 64,
-		MaxCost:     100 * 1000,
+		MaxCost:     "64MiB",
 	}
 
-	client, err := ristrettoClient.New(ristrettoConfig)
+	client, err := providers.NewRistretto(ristrettoConfig)
 	if err != nil {
 		log.Fatalf("error init Ristretto: %v", err)
 	}
@@ -47,7 +46,7 @@ func testRistretto() {
 }
 
 func testRedis() {
-	redisConfig := redisClient.Config{
+	redisConfig := config.Redis{
 		Host:     "localhost",
 		Port:     6379,
 		Password: "",
@@ -55,7 +54,7 @@ func testRedis() {
 		PoolSize: 10,
 		Timeout:  5 * time.Second,
 	}
-	client, err := redisClient.New(redisConfig)
+	client, err := providers.NewRedis(redisConfig)
 	if err != nil {
 		log.Fatalf("error init Redis: %v", err)
 	}

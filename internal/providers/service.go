@@ -1,21 +1,21 @@
-package common
+package providers
 
 import (
 	"aur-cache-service/internal/request"
 	"log"
 )
 
-type CacheService struct {
-	client CacheClient
+type Service struct {
+	client BaseCacheProvider
 }
 
-func NewCacheService(cl CacheClient) *CacheService {
-	return &CacheService{
+func NewService(cl BaseCacheProvider) *Service {
+	return &Service{
 		client: cl,
 	}
 }
 
-func (s *CacheService) Get(req *request.ResolvedGetCacheReq) request.GetCacheResp {
+func (s *Service) Get(req *request.ResolvedGetCacheReq) request.GetCacheResp {
 	v, isFound, _ := s.client.Get(req.GetCacheKey())
 	return request.GetCacheResp{
 		Req:   req,
@@ -24,7 +24,7 @@ func (s *CacheService) Get(req *request.ResolvedGetCacheReq) request.GetCacheRes
 	}
 }
 
-func (s *CacheService) BatchGet(reqs []request.ResolvedGetCacheReq) []request.GetCacheResp {
+func (s *Service) BatchGet(reqs []request.ResolvedGetCacheReq) []request.GetCacheResp {
 	reqMap, reqKeys := s.resolvedReqsToMap(reqs)
 
 	values, err := s.client.BatchGet(reqKeys)
@@ -36,7 +36,7 @@ func (s *CacheService) BatchGet(reqs []request.ResolvedGetCacheReq) []request.Ge
 	return s.collectGetCacheResponse(values, reqMap, reqKeys)
 }
 
-func (s *CacheService) resolvedReqsToMap(reqs []request.ResolvedGetCacheReq) (
+func (s *Service) resolvedReqsToMap(reqs []request.ResolvedGetCacheReq) (
 	reqMap map[string]*request.ResolvedGetCacheReq,
 	reqKeys []string,
 ) {
@@ -51,7 +51,7 @@ func (s *CacheService) resolvedReqsToMap(reqs []request.ResolvedGetCacheReq) (
 	return
 }
 
-func (s *CacheService) collectGetCacheResponse(values map[string]string, reqMap map[string]*request.ResolvedGetCacheReq, reqKeys []string) (responses []request.GetCacheResp) {
+func (s *Service) collectGetCacheResponse(values map[string]string, reqMap map[string]*request.ResolvedGetCacheReq, reqKeys []string) (responses []request.GetCacheResp) {
 	responses = make([]request.GetCacheResp, 0, len(reqMap))
 	for _, key := range reqKeys {
 		value, found := values[key]
@@ -64,6 +64,6 @@ func (s *CacheService) collectGetCacheResponse(values map[string]string, reqMap 
 	return
 }
 
-func (s *CacheService) Close() error {
+func (s *Service) Close() error {
 	return s.client.Close()
 }
