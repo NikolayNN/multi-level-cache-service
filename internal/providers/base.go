@@ -1,6 +1,6 @@
 package providers
 
-type BaseCacheProvider interface {
+type CacheProvider interface {
 	Get(key string) (string, bool, error)
 	Put(key string, value string, ttl int) error
 	Delete(key string) (bool, error)

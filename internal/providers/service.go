@@ -6,18 +6,18 @@ import (
 )
 
 type Service struct {
-	client BaseCacheProvider
+	client CacheProvider
 }
 
-func NewService(cl BaseCacheProvider) *Service {
+func NewService(provider CacheProvider) *Service {
 	return &Service{
-		client: cl,
+		client: provider,
 	}
 }
 
-func (s *Service) Get(req *request.ResolvedGetCacheReq) request.GetCacheResp {
+func (s *Service) Get(req *request.ResolvedGetCacheReq) *request.GetCacheResp {
 	v, isFound, _ := s.client.Get(req.GetCacheKey())
-	return request.GetCacheResp{
+	return &request.GetCacheResp{
 		Req:   req,
 		Value: v,
 		Found: isFound,
