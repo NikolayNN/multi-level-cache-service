@@ -29,7 +29,7 @@ layers:
     mode: "disabled"
 
   - name: "redis-l1"
-    mode: "readwrite"
+    mode: "enabled"
 
   - name: "rocksdb-l2"
-    mode: "readonly"
+    mode: "enabled"

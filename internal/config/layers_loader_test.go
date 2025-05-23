@@ -24,21 +24,21 @@ func TestLoadLayers_Success(t *testing.T) {
 
 	expectedl0 := Layer{
 		Name: "ristretto-l0",
-		Mode: "readwrite",
+		Mode: LayerModeEnabled,
 	}
 
 	assert.Equal(t, expectedl0, actual.Layers[0])
 
 	expectedl1 := Layer{
 		Name: "redis-l1",
-		Mode: "readwrite",
+		Mode: LayerModeEnabled,
 	}
 
 	assert.Equal(t, expectedl1, actual.Layers[1])
 
 	expectedl2 := Layer{
 		Name: "rocksdb-l2",
-		Mode: "readwrite",
+		Mode: LayerModeEnabled,
 	}
 
 	assert.Equal(t, expectedl2, actual.Layers[2])

@@ -26,8 +26,8 @@ func TestLoadLayerProviders_Success(t *testing.T) {
 	assert.Equal(t, 3, len(actual))
 
 	assert.Equal(t, LayerModeDisabled, actual[0].Mode)
-	assert.Equal(t, LayerModeReadwrite, actual[1].Mode)
-	assert.Equal(t, LayerModeReadonly, actual[2].Mode)
+	assert.Equal(t, LayerModeEnabled, actual[1].Mode)
+	assert.Equal(t, LayerModeEnabled, actual[2].Mode)
 
 	assert.Equal(t, ProviderTypeRistretto, actual[0].Provider.GetType())
 	assert.Equal(t, ProviderTypeRedis, actual[1].Provider.GetType())

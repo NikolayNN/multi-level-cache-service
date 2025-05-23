@@ -29,7 +29,7 @@ layers:
     mode: "disabled"
 
   - name: "redis-l1"
-    mode: "readwrite"
+    mode: "enabled"
 
   - name: "unknown_provider_name"
-    mode: "readonly"
+    mode: "enabled"

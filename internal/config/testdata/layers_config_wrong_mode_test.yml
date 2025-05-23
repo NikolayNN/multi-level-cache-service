@@ -3,7 +3,7 @@ layers:
     mode: "wrongmode"
 
   - name: "redis-l1"
-    mode: "readwrite"
+    mode: "enabled"
 
   - name: "rocksdb-l2"
-    mode: "readwrite"
+    mode: "enabled"

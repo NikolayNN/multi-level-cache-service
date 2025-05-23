@@ -5,25 +5,20 @@ import (
 	"github.com/dustin/go-humanize"
 	"os"
 	"strings"
-	"sync"
 )
 
-func LoadOnce[T any](once *sync.Once, cache **T, loadErr *error, path string, unmarshalFn func([]byte) (*T, error)) {
-	once.Do(func() {
-		data, err := os.ReadFile(path)
-		if err != nil {
-			*loadErr = fmt.Errorf("failed to read config file: %w", err)
-			return
-		}
+func loadFile[T any](path string, unmarshalFn func([]byte) (*T, error)) (*T, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read config file: %w", err)
+	}
 
-		obj, err := unmarshalFn(data)
-		if err != nil {
-			*loadErr = err
-			return
-		}
+	obj, err := unmarshalFn(data)
+	if err != nil {
+		return nil, err
+	}
 
-		*cache = obj
-	})
+	return obj, nil
 }
 
 func ParseByteSize(s string) (uint64, error) {

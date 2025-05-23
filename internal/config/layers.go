@@ -5,9 +5,8 @@ import "fmt"
 type LayerMode string
 
 const (
-	LayerModeDisabled  LayerMode = "disabled"
-	LayerModeReadonly  LayerMode = "readonly"
-	LayerModeReadwrite LayerMode = "readwrite"
+	LayerModeDisabled LayerMode = "disabled"
+	LayerModeEnabled  LayerMode = "enabled"
 )
 
 type Layer struct {
@@ -25,7 +24,7 @@ func (m *LayerMode) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		return err
 	}
 	switch s {
-	case string(LayerModeDisabled), string(LayerModeReadonly), string(LayerModeReadwrite):
+	case string(LayerModeDisabled), string(LayerModeEnabled):
 		*m = LayerMode(s)
 		return nil
 	default:
