@@ -1,6 +1,7 @@
 package prefix_test
 
 import (
+	"aur-cache-service/internal/config"
 	"aur-cache-service/internal/config/caches"
 	"aur-cache-service/internal/prefix"
 
@@ -10,7 +11,7 @@ import (
 )
 
 func TestNewService_OK(t *testing.T) {
-	cfg := &caches.CacheConfigsStorage{
+	cfg := &config.CacheStorage{
 		Configs: map[string]caches.Config{
 			"user":  {Prefix: "u"},
 			"order": {Prefix: "o"},
@@ -31,7 +32,7 @@ func TestNewService_PanicIfNil(t *testing.T) {
 }
 
 func TestToCacheKey_PanicIfUnknownCache(t *testing.T) {
-	cfg := &caches.CacheConfigsStorage{
+	cfg := &config.CacheStorage{
 		Configs: map[string]caches.Config{
 			"user": {Prefix: "u"},
 		},

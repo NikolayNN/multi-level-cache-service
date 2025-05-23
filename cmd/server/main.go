@@ -3,7 +3,7 @@ package main
 import (
 	"aur-cache-service/internal/clients/redisClient"
 	"aur-cache-service/internal/clients/ristrettoClient"
-	"aur-cache-service/internal/config/caches"
+	"aur-cache-service/internal/config"
 	"fmt"
 	"log"
 	"time"
@@ -17,7 +17,7 @@ func main() {
 }
 
 func testLoadCacheConfig() {
-	configs, err := caches.LoadConfig("configs/cache.yml")
+	configs, err := config.LoadCacheStorage("configs/cache.yml")
 	if err != nil {
 		fmt.Println("Error read config")
 	}

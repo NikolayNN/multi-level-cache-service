@@ -1,7 +1,7 @@
 package prefix
 
 import (
-	"aur-cache-service/internal/config/caches"
+	"aur-cache-service/internal/config"
 )
 
 type Service struct {
@@ -10,7 +10,7 @@ type Service struct {
 
 const separator = ":"
 
-func New(cacheConfigStorage *caches.CacheConfigsStorage) *Service {
+func New(cacheConfigStorage *config.CacheStorage) *Service {
 	if cacheConfigStorage == nil {
 		panic("cacheConfigStorage is nil")
 	}

@@ -1,0 +1,28 @@
+# ==== Глобальная конфигурация =====================================
+
+providers:
+  - name: "ristretto-l0"
+    type: "ristretto"
+    numCounters: 1_000_000
+    bufferItems: 64
+    maxCost: 64MiB
+    defaultTTL: 15s
+
+  - name: "redis-l1"
+    type: "redis"
+    host: localhost
+    port: 6370
+    password: "12345"
+    db: 0
+    poolSize: 10
+    timeout: 5s
+
+  - name: "rocksdb-l2"
+    type: "rocksdb"
+    path: "/path"
+    createIfMissing: true
+    maxOpenFiles: 100
+    blockSize: 60MiB
+    blockCache: 61MiB
+    writeBufferSize: 62MiB
+

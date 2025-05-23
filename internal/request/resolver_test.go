@@ -1,6 +1,7 @@
 package request_test
 
 import (
+	"aur-cache-service/internal/config"
 	"aur-cache-service/internal/config/caches"
 	"aur-cache-service/internal/prefix"
 	"aur-cache-service/internal/request"
@@ -10,7 +11,7 @@ import (
 )
 
 func TestResolve_Success(t *testing.T) {
-	prefixService := prefix.New(&caches.CacheConfigsStorage{
+	prefixService := prefix.New(&config.CacheStorage{
 		Configs: map[string]caches.Config{
 			"user": {Prefix: "u"},
 			"task": {Prefix: "t"},
@@ -34,7 +35,7 @@ func TestResolve_Success(t *testing.T) {
 }
 
 func TestResolve_SkipUnknownCache(t *testing.T) {
-	prefixService := prefix.New(&caches.CacheConfigsStorage{
+	prefixService := prefix.New(&config.CacheStorage{
 		Configs: map[string]caches.Config{
 			"user": {Prefix: "u"},
 		},

@@ -1,0 +1,30 @@
+caches:
+  - name: user
+    prefix: "u"
+    layers:
+      - enabled: true
+        ttl: 30s
+      - enabled: true
+        ttl: 10m
+      - enabled: true
+        ttl: 6h
+    api:
+      enabled: true
+      getBatch:
+        url: "localhost:8080/user"
+        prop: "id"
+
+  - name: order
+    prefix: "o"
+    layers:
+      - enabled: true
+        ttl: 60s
+      - enabled: true
+        ttl: 20m
+      - enabled: true
+        ttl: 12h
+    api:
+      enabled: true
+      getBatch:
+        url: "localhost:8080/order"
+        prop: "id"

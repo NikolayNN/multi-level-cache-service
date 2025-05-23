@@ -1,7 +1,7 @@
 package rocksDbClient
 
 import (
-	"aur-cache-service/internal/config/clients"
+	"aur-cache-service/internal/config"
 	"fmt"
 	"strconv"
 	"time"
@@ -17,7 +17,7 @@ type Client struct {
 }
 
 // New создает новый клиент RocksDB
-func New(cfg clients.RocksDBConfig) (*Client, error) {
+func New(cfg config.RocksDBProvider) (*Client, error) {
 	// Настройка опций базы данных
 	bbto := grocksdb.NewDefaultBlockBasedTableOptions()
 	if cfg.BlockSizeBytes() > 0 {
