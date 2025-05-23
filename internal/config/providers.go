@@ -7,21 +7,29 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+type ProviderType string
+
+const (
+	ProviderTypeRistretto ProviderType = "ristretto"
+	ProviderTypeRedis     ProviderType = "redis"
+	ProviderTypeRocksDb   ProviderType = "rocksdb"
+)
+
 /* ---------- общее ядро ---------- */
 
 type ProviderMeta struct {
-	Name string `yaml:"name"`
-	Type string `yaml:"type"`
+	Name string       `yaml:"name"`
+	Type ProviderType `yaml:"type"`
 }
 
-func (m ProviderMeta) GetName() string { return m.Name }
-func (m ProviderMeta) GetType() string { return m.Type }
+func (m ProviderMeta) GetName() string       { return m.Name }
+func (m ProviderMeta) GetType() ProviderType { return m.Type }
 
 /* ---------- интерфейс ---------- */
 
 type Provider interface {
 	GetName() string
-	GetType() string
+	GetType() ProviderType
 }
 
 /* ---------- конкретные типы ---------- */
@@ -80,6 +88,21 @@ type ProvidersConfig struct {
 
 /* ---------- кастомный Unmarshal ---------- */
 
+func (pt *ProviderType) UnmarshalYAML(value *yaml.Node) error {
+	var s string
+	if err := value.Decode(&s); err != nil {
+		return err
+	}
+
+	switch s {
+	case string(ProviderTypeRistretto), string(ProviderTypeRedis), string(ProviderTypeRocksDb):
+		*pt = ProviderType(s)
+		return nil
+	default:
+		return fmt.Errorf("unknown provider type: %q", s)
+	}
+}
+
 func (pc *ProvidersConfig) UnmarshalYAML(value *yaml.Node) error {
 	var raw struct {
 		Providers []yaml.Node `yaml:"providers"`
@@ -96,15 +119,14 @@ func (pc *ProvidersConfig) UnmarshalYAML(value *yaml.Node) error {
 
 		var p Provider
 		switch meta.Type {
-		case "ristretto":
+		case ProviderTypeRistretto:
 			p = &Ristretto{}
-		case "redis":
+		case ProviderTypeRedis:
 			p = &Redis{}
-		case "rocksdb":
+		case ProviderTypeRocksDb:
 			p = &RocksDB{}
-		default:
-			return fmt.Errorf("unknown provider type: %s", meta.Type)
 		}
+
 		if err := n.Decode(p); err != nil {
 			return err
 		}

@@ -12,31 +12,31 @@ var pathConfigFileWrongMode = "testData/layers_config_wrong_mode_test.yml"
 
 func TestLoadLayers_Success(t *testing.T) {
 
-	actual, err := LoadLayers(pathConfigFile)
+	actual, err := loadLayers(pathConfigFile)
 
 	if err != nil {
-		t.Fatalf("LoadLayers failed: %v", err)
+		t.Fatalf("loadLayers failed: %v", err)
 	}
 
 	for _, p := range actual.Layers {
 		fmt.Printf("%+v\n", p)
 	}
 
-	expectedl0 := CacheLayer{
+	expectedl0 := Layer{
 		Name: "ristretto-l0",
 		Mode: "readwrite",
 	}
 
 	assert.Equal(t, expectedl0, actual.Layers[0])
 
-	expectedl1 := CacheLayer{
+	expectedl1 := Layer{
 		Name: "redis-l1",
 		Mode: "readwrite",
 	}
 
 	assert.Equal(t, expectedl1, actual.Layers[1])
 
-	expectedl2 := CacheLayer{
+	expectedl2 := Layer{
 		Name: "rocksdb-l2",
 		Mode: "readwrite",
 	}
@@ -46,7 +46,7 @@ func TestLoadLayers_Success(t *testing.T) {
 
 func TestLoadLayers_WrongMode(t *testing.T) {
 
-	_, err := LoadLayers(pathConfigFileWrongMode)
+	_, err := loadLayers(pathConfigFileWrongMode)
 
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "invalid cache layer mode: \"wrongmode\"")

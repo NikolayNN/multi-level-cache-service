@@ -8,13 +8,13 @@ import (
 
 var (
 	layersOnce sync.Once
-	layersCfg  *CacheLayers
+	layersCfg  *Layers
 	layersErr  error
 )
 
-func LoadLayers(path string) (*CacheLayers, error) {
-	LoadOnce(&layersOnce, &layersCfg, &layersErr, path, func(data []byte) (*CacheLayers, error) {
-		var cfg CacheLayers
+func loadLayers(path string) (*Layers, error) {
+	LoadOnce(&layersOnce, &layersCfg, &layersErr, path, func(data []byte) (*Layers, error) {
+		var cfg Layers
 		if err := yaml.Unmarshal(data, &cfg); err != nil {
 			return nil, fmt.Errorf("cannot parse layers config: %w", err)
 		}
