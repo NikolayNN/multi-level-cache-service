@@ -1,7 +1,7 @@
 package config
 
 import (
-	"aur-cache-service/internal/dto/cmn"
+	"aur-cache-service/internal/resolvers/cmn"
 )
 
 type CacheService interface {

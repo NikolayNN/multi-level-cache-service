@@ -1,7 +1,7 @@
 package providers
 
 import (
-	"aur-cache-service/internal/dto/get"
+	"aur-cache-service/internal/resolvers/get"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )

@@ -1,7 +1,7 @@
 package put
 
 import (
-	"aur-cache-service/internal/dto/cmn"
+	"aur-cache-service/internal/resolvers/cmn"
 	"github.com/stretchr/testify/require"
 	"testing"
 	"time"
