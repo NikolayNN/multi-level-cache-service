@@ -1,7 +1,7 @@
 package providers
 
 import (
-	"aur-cache-service/internal/request"
+	"aur-cache-service/internal/dto/get"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -52,8 +52,8 @@ func TestCacheService_Get_KeyExists(t *testing.T) {
 	}
 
 	service := NewService(mockClient)
-	req := &request.ResolvedGetCacheReq{
-		Req: &request.GetCacheReq{
+	req := &get.CacheReqResolved{
+		Req: &get.CacheReq{
 			CacheName: "user",
 			Key:       "1",
 		},
@@ -78,8 +78,8 @@ func TestCacheService_Get_KeyNotExists(t *testing.T) {
 	}
 
 	service := NewService(mockClient)
-	req := &request.ResolvedGetCacheReq{
-		Req: &request.GetCacheReq{
+	req := &get.CacheReqResolved{
+		Req: &get.CacheReq{
 			CacheName: "user",
 			Key:       "999",
 		},
@@ -105,16 +105,16 @@ func TestCacheService_BatchGet_allExists(t *testing.T) {
 
 	service := NewService(mockClient)
 
-	reqs := []request.ResolvedGetCacheReq{
+	reqs := []get.CacheReqResolved{
 		{
-			Req: &request.GetCacheReq{
+			Req: &get.CacheReq{
 				CacheName: "user",
 				Key:       "1",
 			},
 			CacheKey: "u:1",
 		},
 		{
-			Req: &request.GetCacheReq{
+			Req: &get.CacheReq{
 				CacheName: "user",
 				Key:       "2",
 			},
@@ -142,16 +142,16 @@ func TestCacheService_BatchGet_oneNotExists(t *testing.T) {
 
 	service := NewService(mockClient)
 
-	reqs := []request.ResolvedGetCacheReq{
+	reqs := []get.CacheReqResolved{
 		{
-			Req: &request.GetCacheReq{
+			Req: &get.CacheReq{
 				CacheName: "user",
 				Key:       "1",
 			},
 			CacheKey: "u:1",
 		},
 		{
-			Req: &request.GetCacheReq{
+			Req: &get.CacheReq{
 				CacheName: "user",
 				Key:       "2",
 			},
