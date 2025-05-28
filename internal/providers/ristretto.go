@@ -25,42 +25,6 @@ func NewRistretto(cfg config.Ristretto) (*Client, error) {
 	}, nil
 }
 
-func (c *Client) Get(key string) (string, bool, error) {
-	val, found := c.cache.Get(key)
-	if !found {
-		return "", false, nil
-	}
-
-	strVal, ok := val.(string)
-	if !ok {
-		return "", false, nil
-	}
-
-	return strVal, true, nil
-}
-
-func (c *Client) Put(key string, value string, ttl int) error {
-	cost := int64(len(value))
-
-	var success bool
-	if ttl > 0 {
-		expiration := time.Duration(ttl) * time.Millisecond
-		success = c.cache.SetWithTTL(key, value, cost, expiration)
-	} else {
-		success = c.cache.Set(key, value, cost)
-	}
-
-	if !success {
-		// Не попал в кэш (например, не прошёл через буфер или вытеснен)
-	}
-	return nil
-}
-
-func (c *Client) Delete(key string) (bool, error) {
-	c.cache.Del(key)
-	return true, nil
-}
-
 func (c *Client) BatchGet(keys []string) (map[string]string, error) {
 	result := make(map[string]string)
 	for _, key := range keys {
@@ -74,7 +38,7 @@ func (c *Client) BatchGet(keys []string) (map[string]string, error) {
 	return result, nil
 }
 
-func (c *Client) BatchPut(items map[string]string, ttls map[string]int) error {
+func (c *Client) BatchPut(items map[string]string, ttls map[string]uint) error {
 	for key, val := range items {
 		var expiration time.Duration
 		if ttl, ok := ttls[key]; ok && ttl > 0 {

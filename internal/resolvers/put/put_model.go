@@ -21,3 +21,7 @@ type CacheReqResolved struct {
 	CacheKey string
 	Ttl      time.Duration
 }
+
+func (c *CacheReqResolved) GetValue() string {
+	return c.Req.Value
+}

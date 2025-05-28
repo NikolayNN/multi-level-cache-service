@@ -36,43 +36,6 @@ func NewRedis(cfg config.Redis) (*Redis, error) {
 	}, nil
 }
 
-// Get получает значение по ключу из Redis (string версия)
-func (c *Redis) Get(key string) (string, bool, error) {
-	val, err := c.rdb.Get(c.ctx, key).Result()
-	if err != nil {
-		if err == redis.Nil {
-			// Ключ не найден
-			return "", false, nil
-		}
-		return "", false, fmt.Errorf("ошибка получения значения из Redis: %w", err)
-	}
-	return val, true, nil
-}
-
-// Put сохраняет значение по ключу в Redis с опциональным TTL (string версия)
-func (c *Redis) Put(key string, value string, ttl int) error {
-	var expiration time.Duration
-	if ttl > 0 {
-		expiration = time.Duration(ttl) * time.Second
-	}
-
-	err := c.rdb.Set(c.ctx, key, value, expiration).Err()
-	if err != nil {
-		return fmt.Errorf("ошибка сохранения значения в Redis: %w", err)
-	}
-	return nil
-}
-
-// Delete удаляет значение по ключу из Redis
-func (c *Redis) Delete(key string) (bool, error) {
-	res, err := c.rdb.Del(c.ctx, key).Result()
-	if err != nil {
-		return false, fmt.Errorf("error delete value from Redis: %w", err)
-	}
-	// Возвращаем true, если ключ был найден и удален
-	return res > 0, nil
-}
-
 // BatchGet получает несколько значений за один запрос
 func (c *Redis) BatchGet(keys []string) (map[string]string, error) {
 	if len(keys) == 0 {
@@ -98,7 +61,7 @@ func (c *Redis) BatchGet(keys []string) (map[string]string, error) {
 }
 
 // BatchPut сохраняет несколько значений за один запрос
-func (c *Redis) BatchPut(items map[string]string, ttls map[string]int) error {
+func (c *Redis) BatchPut(items map[string]string, ttls map[string]uint) error {
 	if len(items) == 0 {
 		return nil
 	}

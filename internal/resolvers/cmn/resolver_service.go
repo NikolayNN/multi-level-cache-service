@@ -1,4 +1,4 @@
-package get
+package cmn
 
 import (
 	"aur-cache-service/internal/config"
@@ -12,10 +12,10 @@ func NewResolverService(cacheConfigService *config.CacheServiceImpl) *ResolverSe
 	return &ResolverService{cacheConfigService: cacheConfigService}
 }
 
-func (s *ResolverService) Resolve(requests []CacheReq) []CacheReqResolved {
-	resolved := make([]CacheReqResolved, 0, len(requests))
+func (s *ResolverService) Resolve(requests []*CacheReq) []*CacheReqResolved {
+	resolved := make([]*CacheReqResolved, 0, len(requests))
 	for _, req := range requests {
-		cacheReq, err := s.toResolved(&req)
+		cacheReq, err := s.toResolved(req)
 		if err == nil {
 			resolved = append(resolved, cacheReq)
 		}
@@ -23,9 +23,9 @@ func (s *ResolverService) Resolve(requests []CacheReq) []CacheReqResolved {
 	return resolved
 }
 
-func (s *ResolverService) toResolved(req *CacheReq) (CacheReqResolved, error) {
+func (s *ResolverService) toResolved(req *CacheReq) (*CacheReqResolved, error) {
 
-	return CacheReqResolved{
+	return &CacheReqResolved{
 		Req:      req,
 		CacheKey: s.cacheConfigService.CacheKey(req),
 	}, nil

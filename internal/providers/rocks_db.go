@@ -1,6 +1,3 @@
-//go:build rocksdb
-// +build rocksdb
-
 package providers
 
 import (
@@ -56,81 +53,6 @@ func NewRocksDb(cfg config.RocksDB) (*RocksDb, error) {
 	}, nil
 }
 
-// Get получает значение по ключу
-func (c *RocksDb) Get(key string) (string, bool, error) {
-	// Проверка TTL
-	if c.isExpired(key) {
-		c.Delete(key)
-		return "", false, nil
-	}
-
-	// Получение значения
-	slice, err := c.db.Get(c.readOpts, []byte(key))
-	if err != nil {
-		return "", false, fmt.Errorf("ошибка получения значения из RocksDB: %w", err)
-	}
-	defer slice.Free()
-
-	if !slice.Exists() {
-		return "", false, nil
-	}
-
-	return string(slice.Data()), true, nil
-}
-
-// Put сохраняет значение по ключу с опциональным TTL
-func (c *RocksDb) Put(key string, value string, ttl int) error {
-	// Сохранение значения
-	err := c.db.Put(c.writeOpts, []byte(key), []byte(value))
-	if err != nil {
-		return fmt.Errorf("ошибка сохранения значения в RocksDB: %w", err)
-	}
-
-	// Установка TTL, если он указан
-	if ttl > 0 {
-		expiration := time.Now().Add(time.Duration(ttl) * time.Second)
-		c.ttlCache[key] = expiration
-
-		// Сохраняем TTL в базу данных (с префиксом ttl:)
-		ttlKey := "ttl:" + key
-		ttlValue := strconv.FormatInt(expiration.UnixNano(), 10)
-		err = c.db.Put(c.writeOpts, []byte(ttlKey), []byte(ttlValue))
-		if err != nil {
-			return fmt.Errorf("ошибка сохранения TTL в RocksDB: %w", err)
-		}
-	}
-
-	return nil
-}
-
-// Delete удаляет значение по ключу
-func (c *RocksDb) Delete(key string) (bool, error) {
-	// Проверяем существование ключа перед удалением
-	slice, err := c.db.Get(c.readOpts, []byte(key))
-	if err != nil {
-		return false, fmt.Errorf("ошибка проверки существования ключа в RocksDB: %w", err)
-	}
-	exists := slice.Exists()
-	slice.Free()
-
-	if !exists {
-		return false, nil
-	}
-
-	// Удаление ключа
-	err = c.db.Delete(c.writeOpts, []byte(key))
-	if err != nil {
-		return false, fmt.Errorf("ошибка удаления значения из RocksDB: %w", err)
-	}
-
-	// Удаление TTL, если он был
-	delete(c.ttlCache, key)
-	ttlKey := "ttl:" + key
-	c.db.Delete(c.writeOpts, []byte(ttlKey))
-
-	return true, nil
-}
-
 // BatchGet получает несколько значений за один запрос
 func (c *RocksDb) BatchGet(keys []string) (map[string]string, error) {
 	if len(keys) == 0 {
@@ -162,7 +84,7 @@ func (c *RocksDb) BatchGet(keys []string) (map[string]string, error) {
 }
 
 // BatchPut сохраняет несколько значений за один запрос
-func (c *RocksDb) BatchPut(items map[string]string, ttls map[string]int) error {
+func (c *RocksDb) BatchPut(items map[string]string, ttls map[string]uint) error {
 	if len(items) == 0 {
 		return nil
 	}
