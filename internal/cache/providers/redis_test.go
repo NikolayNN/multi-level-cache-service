@@ -98,7 +98,7 @@ func TestClient_BatchPut(t *testing.T) {
 		"key3": "value3",
 	}
 
-	ttls := map[string]uint{
+	ttls := map[string]int64{
 		"key1": 60,
 		"key2": 0, // Без TTL
 		"key3": 120,
@@ -124,7 +124,7 @@ func TestClient_BatchPut(t *testing.T) {
 	}
 
 	// Проверка на пустой список элементов
-	err = client.BatchPut(map[string]string{}, map[string]uint{})
+	err = client.BatchPut(map[string]string{}, map[string]int64{})
 	assert.NoError(t, err)
 }
 
