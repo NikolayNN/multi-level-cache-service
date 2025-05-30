@@ -1,7 +1,7 @@
 package providers
 
 import (
-	"aur-cache-service/internal/config"
+	"aur-cache-service/internal/cache/config"
 	"context"
 	"fmt"
 	"github.com/redis/go-redis/v9"

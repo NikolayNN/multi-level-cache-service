@@ -2,7 +2,7 @@ package providers
 
 import (
 	"aur-cache-service/api/dto"
-	"aur-cache-service/internal/config"
+	config2 "aur-cache-service/internal/cache/config"
 	"encoding/json"
 	"fmt"
 )
@@ -59,7 +59,7 @@ type GetResult struct {
 	Skipped []*dto.ResolvedCacheId
 }
 
-func CreateNewServiceList(providerConfigs []*config.LayerProvider, cacheServiceConfig config.CacheService) ([]Service, error) {
+func CreateNewServiceList(providerConfigs []*config2.LayerProvider, cacheServiceConfig config2.CacheService) ([]Service, error) {
 	services := make([]Service, 0, len(providerConfigs))
 
 	for i, providerConfig := range providerConfigs {
@@ -72,8 +72,8 @@ func CreateNewServiceList(providerConfigs []*config.LayerProvider, cacheServiceC
 	return services, nil
 }
 
-func createService(providerConfig *config.LayerProvider, cacheServiceConfig config.CacheService, level int) (Service, error) {
-	if providerConfig.Mode == config.LayerModeDisabled {
+func createService(providerConfig *config2.LayerProvider, cacheServiceConfig config2.CacheService, level int) (Service, error) {
+	if providerConfig.Mode == config2.LayerModeDisabled {
 		return &ServiceDisabled{}, nil
 	}
 
@@ -86,11 +86,11 @@ func createService(providerConfig *config.LayerProvider, cacheServiceConfig conf
 
 func initProvider(p interface{}) (CacheProvider, error) {
 	switch c := p.(type) {
-	case config.Ristretto:
+	case config2.Ristretto:
 		return NewRistretto(c)
-	case config.Redis:
+	case config2.Redis:
 		return NewRedis(c)
-	case config.RocksDB:
+	case config2.RocksDB:
 		return NewRocksDb(c)
 	default:
 		return nil, fmt.Errorf("unsupported provider type: %T", c)
@@ -103,7 +103,7 @@ func initProvider(p interface{}) (CacheProvider, error) {
 
 type ServiceImpl struct {
 	client        CacheProvider
-	configService config.CacheService
+	configService config2.CacheService
 	level         int
 }
 

@@ -1,7 +1,7 @@
 package dto
 
 import (
-	"aur-cache-service/internal/config"
+	"aur-cache-service/internal/cache/config"
 )
 
 type ResolverMapper struct {

@@ -4,8 +4,8 @@
 package rocksDbClient_test
 
 import (
-	"aur-cache-service/internal/config"
-	"aur-cache-service/internal/providers"
+	"aur-cache-service/internal/cache/config"
+	"aur-cache-service/internal/cache/providers"
 	"fmt"
 	"io/ioutil"
 	"os"

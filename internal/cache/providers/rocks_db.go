@@ -1,7 +1,7 @@
 package providers
 
 import (
-	"aur-cache-service/internal/config"
+	"aur-cache-service/internal/cache/config"
 	"fmt"
 	"strconv"
 	"time"
