@@ -1,39 +1,45 @@
 package config
 
 import (
-	"aur-cache-service/internal/resolvers/cmn"
+	"aur-cache-service/api/dto"
+	"time"
 )
 
 type CacheService interface {
 	GetByName(cacheName string) Cache
-	CacheKey(cacheNameKey cmn.CacheNameKey) string
-	ToCacheKey(cacheName string, key string) string
+	GetCacheByCacheId(cacheId dto.CacheIdRef) Cache
+	toStorageKey(cacheNameKey dto.CacheIdRef) string
 }
 
 type CacheServiceImpl struct {
-	CacheStorage *CacheStorage
+	Caches map[string]Cache
 }
 
-const prefixKeySeparator = ":"
-
-func NewCacheService(cacheConfigStorage *CacheStorage) *CacheServiceImpl {
-	if cacheConfigStorage == nil {
+func NewCacheService(cfg *AppConfig) *CacheServiceImpl {
+	if cfg == nil {
 		panic("cacheConfigStorage is nil")
 	}
+	caches := make(map[string]Cache)
+	for _, cache := range cfg.Caches {
+		caches[cache.Name] = cache
+	}
 	return &CacheServiceImpl{
-		CacheStorage: cacheConfigStorage,
+		Caches: caches,
 	}
 }
 
-func (s *CacheServiceImpl) GetByName(cacheName string) Cache {
-	return s.CacheStorage.Configs[cacheName]
+func (s *CacheServiceImpl) GetCacheByCacheId(cacheId dto.CacheIdRef) Cache {
+	return s.Caches[cacheId.GetCacheName()]
 }
 
-func (s *CacheServiceImpl) CacheKey(cacheNameKey cmn.CacheNameKey) string {
-	return s.ToCacheKey(cacheNameKey.GetCacheName(), cacheNameKey.GetKey())
+func (s *CacheServiceImpl) GetPrefixByCacheId(cacheId dto.CacheIdRef) string {
+	return s.Caches[cacheId.GetCacheName()].Prefix
 }
 
-func (s *CacheServiceImpl) ToCacheKey(cacheName string, key string) string {
-	prefix := s.CacheStorage.Configs[cacheName].Prefix
-	return prefix + prefixKeySeparator + key
+func (s *CacheServiceImpl) GetTtlByCacheId(cacheId dto.CacheIdRef, level int) time.Duration {
+	return s.Caches[cacheId.GetCacheName()].Layers[level].TTL
+}
+
+func (s *CacheServiceImpl) IsLevelEnabledByCacheId(cacheId dto.CacheIdRef, level int) bool {
+	return s.Caches[cacheId.GetCacheName()].Layers[level].Enabled
 }

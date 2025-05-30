@@ -38,7 +38,7 @@ func (c *Client) BatchGet(keys []string) (map[string]string, error) {
 	return result, nil
 }
 
-func (c *Client) BatchPut(items map[string]string, ttls map[string]uint) error {
+func (c *Client) BatchPut(items map[string]string, ttls map[string]int64) error {
 	for key, val := range items {
 		var expiration time.Duration
 		if ttl, ok := ttls[key]; ok && ttl > 0 {

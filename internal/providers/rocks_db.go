@@ -84,7 +84,7 @@ func (c *RocksDb) BatchGet(keys []string) (map[string]string, error) {
 }
 
 // BatchPut сохраняет несколько значений за один запрос
-func (c *RocksDb) BatchPut(items map[string]string, ttls map[string]uint) error {
+func (c *RocksDb) BatchPut(items map[string]string, ttls map[string]int64) error {
 	if len(items) == 0 {
 		return nil
 	}

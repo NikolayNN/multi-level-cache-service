@@ -1,9 +1,0 @@
-layers:
-  - name: "ristretto-l0"
-    mode: "wrongmode"
-
-  - name: "redis-l1"
-    mode: "enabled"
-
-  - name: "rocksdb-l2"
-    mode: "enabled"

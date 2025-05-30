@@ -7,28 +7,26 @@ type LayerProvider struct {
 	Provider Provider
 }
 
-func LoadLayersProviders(path string) (layerProviders []LayerProvider, err error) {
-	layerList, err := loadLayers(path)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load layers: %w", err)
-	}
-	pds, err := LoadProviders(path)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load providers: %w", err)
-	}
-	providersMap := providersToMap(pds.Providers)
-	layerProviders, err = createLayerProviders(layerList.Layers, providersMap)
-	return
+type LayerProviderService struct {
+	layerProviders []*LayerProvider
 }
 
-func createLayerProviders(layers []Layer, providersMap map[string]Provider) (layerProviders []LayerProvider, err error) {
-	layerProviders = make([]LayerProvider, len(layers))
+func NewLayerProviderService(cfg *AppConfig) *LayerProviderService {
+	providersMap := providersToMap(cfg.Provider)
+	layerProviders := createLayerProviders(cfg.Layers, providersMap)
+	return &LayerProviderService{
+		layerProviders: layerProviders,
+	}
+}
+
+func createLayerProviders(layers []Layer, providersMap map[string]Provider) (layerProviders []*LayerProvider) {
+	layerProviders = make([]*LayerProvider, len(layers))
 	for i, layer := range layers {
 		provider, found := providersMap[layer.Name]
 		if !found {
-			return nil, fmt.Errorf("Can't create layer providers. can't find provider with name: %q", layer.Name)
+			panic(fmt.Errorf("can't create layer providers. can't find provider with name: %q", layer.Name))
 		}
-		layerProviders[i] = LayerProvider{
+		layerProviders[i] = &LayerProvider{
 			Mode:     layer.Mode,
 			Provider: provider,
 		}

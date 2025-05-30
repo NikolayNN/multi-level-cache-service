@@ -2,10 +2,21 @@ package config
 
 import (
 	"fmt"
-	"time"
-
+	"github.com/dustin/go-humanize"
 	"gopkg.in/yaml.v3"
+	"strings"
+	"time"
 )
+
+type AppConfigIntermediary struct {
+	Providers Providers `yaml:"providers"`
+	Layers    []Layer   `yaml:"layers"`
+	Caches    []Cache   `yaml:"caches"`
+}
+
+///////////////////////////////////////////////////////////
+/// Providers structs
+///////////////////////////////////////////////////////////
 
 type ProviderType string
 
@@ -80,12 +91,6 @@ func (r *RocksDB) WriteBufferSizeBytes() uint64 {
 	return ParseBytesStr(r.WriteBufferSize, r.Name+" -> writeBufferSize")
 }
 
-/* ---------- оболочка для YAML ---------- */
-
-type ProvidersConfig struct {
-	Providers []Provider `yaml:"providers"`
-}
-
 /* ---------- кастомный Unmarshal ---------- */
 
 func (pt *ProviderType) UnmarshalYAML(value *yaml.Node) error {
@@ -103,34 +108,108 @@ func (pt *ProviderType) UnmarshalYAML(value *yaml.Node) error {
 	}
 }
 
-func (pc *ProvidersConfig) UnmarshalYAML(value *yaml.Node) error {
-	var raw struct {
-		Providers []yaml.Node `yaml:"providers"`
-	}
+type Providers []Provider
+
+func (p *Providers) UnmarshalYAML(value *yaml.Node) error {
+	var raw []yaml.Node
 	if err := value.Decode(&raw); err != nil {
 		return err
 	}
 
-	for _, n := range raw.Providers {
+	for _, n := range raw {
 		var meta ProviderMeta
 		if err := n.Decode(&meta); err != nil {
 			return err
 		}
 
-		var p Provider
+		var prov Provider
 		switch meta.Type {
 		case ProviderTypeRistretto:
-			p = &Ristretto{}
+			prov = &Ristretto{}
 		case ProviderTypeRedis:
-			p = &Redis{}
+			prov = &Redis{}
 		case ProviderTypeRocksDb:
-			p = &RocksDB{}
+			prov = &RocksDB{}
+		default:
+			return fmt.Errorf("unknown provider type: %q", meta.Type)
 		}
 
-		if err := n.Decode(p); err != nil {
+		if err := n.Decode(prov); err != nil {
 			return err
 		}
-		pc.Providers = append(pc.Providers, p)
+		*p = append(*p, prov)
 	}
 	return nil
+}
+
+///////////////////////////////////////////////////////////
+/// Layers structs
+///////////////////////////////////////////////////////////
+
+type LayerMode string
+
+const (
+	LayerModeDisabled LayerMode = "disabled"
+	LayerModeEnabled  LayerMode = "enabled"
+)
+
+type Layer struct {
+	Name string    `yaml:"name"`
+	Mode LayerMode `yaml:"mode"`
+}
+
+func (m *LayerMode) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	var s string
+	if err := unmarshal(&s); err != nil {
+		return err
+	}
+	switch s {
+	case string(LayerModeDisabled), string(LayerModeEnabled):
+		*m = LayerMode(s)
+		return nil
+	default:
+		return fmt.Errorf("invalid cache layer mode: %q", s)
+	}
+}
+
+///////////////////////////////////////////////////////////
+/// Caches structs
+///////////////////////////////////////////////////////////
+
+type CacheLayerConfig struct {
+	Enabled bool          `yaml:"enabled"`
+	TTL     time.Duration `yaml:"ttl"`
+}
+
+type ApiBatchConfig struct {
+	URL  string `yaml:"url"`
+	Prop string `yaml:"prop"`
+}
+
+type ApiConfig struct {
+	Enabled  bool           `yaml:"enabled"`
+	GetBatch ApiBatchConfig `yaml:"getBatch"`
+}
+
+type Cache struct {
+	Name   string             `yaml:"name"`
+	Prefix string             `yaml:"prefix"`
+	Layers []CacheLayerConfig `yaml:"layers"`
+	Api    ApiConfig          `yaml:"api"`
+}
+
+///////////////////////////////////////////////////////////
+/// UTILS
+///////////////////////////////////////////////////////////
+
+func ParseByteSize(s string) (uint64, error) {
+	return humanize.ParseBytes(strings.TrimSpace(s))
+}
+
+func ParseBytesStr(bytesString string, errorPath string) uint64 {
+	bytes, err := ParseByteSize(bytesString)
+	if err != nil {
+		panic(fmt.Sprintf("invalid config -> %v : %v has wrong value (%v)", errorPath, bytesString, err))
+	}
+	return bytes
 }
