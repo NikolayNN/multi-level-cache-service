@@ -119,5 +119,11 @@ caches:
     Api:
       enabled: true
       getBatch:
+        timeout: 10s
         url: "localhost:8080/user"
         prop: "id"
+        keyType: "number"  # Отображает тип ключа в запросе "string" | "number"
+        headers:
+          Authorization: "Bearer abc123"
+          Content-Type: "application/json"
+

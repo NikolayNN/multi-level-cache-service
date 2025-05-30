@@ -181,9 +181,19 @@ type CacheLayerConfig struct {
 	TTL     time.Duration `yaml:"ttl"`
 }
 
+type KeyType string
+
+const (
+	KeyTypeString KeyType = "string"
+	KeyTypeNumber KeyType = "number"
+)
+
 type ApiBatchConfig struct {
-	URL  string `yaml:"url"`
-	Prop string `yaml:"prop"`
+	URL     string            `yaml:"url"`
+	Prop    string            `yaml:"prop"`
+	KeyType KeyType           `yaml:"keyType"`
+	Headers map[string]string `yaml:"headers"`
+	Timeout time.Duration     `yaml:"timeout"`
 }
 
 type ApiConfig struct {
