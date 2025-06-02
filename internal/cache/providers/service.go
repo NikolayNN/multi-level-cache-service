@@ -47,16 +47,10 @@ import (
 //
 // Это позволяет централизованно управлять включением/отключением слоёв без изменения клиентского кода.
 type Service interface {
-	GetAll(reqs []*dto.ResolvedCacheId) (*GetResult, error)
+	GetAll(reqs []*dto.ResolvedCacheId) (*dto.GetResult, error)
 	PutAll(reqs []*dto.ResolvedCacheEntry) error
 	DeleteAll(reqs []*dto.ResolvedCacheId) error
 	Close() error
-}
-
-type GetResult struct {
-	Hits    []*dto.ResolvedCacheHit
-	Misses  []*dto.ResolvedCacheId
-	Skipped []*dto.ResolvedCacheId
 }
 
 func CreateNewServiceList(providerConfigs []*config2.LayerProvider, cacheServiceConfig config2.CacheService) ([]Service, error) {
@@ -109,10 +103,10 @@ type ServiceImpl struct {
 
 // GetAll получает значения для ключей, у которых включён текущий слой.
 // На выходе — разделение на hits/misses/skipped + возможная ошибка клиента
-func (s *ServiceImpl) GetAll(reqs []*dto.ResolvedCacheId) (*GetResult, error) {
+func (s *ServiceImpl) GetAll(reqs []*dto.ResolvedCacheId) (*dto.GetResult, error) {
 	keyToRequest, enabledKeys, skipped := s.categorizeRequests(reqs)
 	if len(enabledKeys) == 0 {
-		return &GetResult{Hits: []*dto.ResolvedCacheHit{}, Misses: []*dto.ResolvedCacheId{}, Skipped: skipped}, nil
+		return &dto.GetResult{Hits: []*dto.ResolvedCacheHit{}, Misses: []*dto.ResolvedCacheId{}, Skipped: skipped}, nil
 	}
 
 	values, err := s.client.BatchGet(enabledKeys)
@@ -135,7 +129,7 @@ func (s *ServiceImpl) GetAll(reqs []*dto.ResolvedCacheId) (*GetResult, error) {
 			misses = append(misses, keyToRequest[key])
 		}
 	}
-	return &GetResult{
+	return &dto.GetResult{
 		Hits:    hits,
 		Misses:  misses,
 		Skipped: skipped,
@@ -211,8 +205,8 @@ func (s *ServiceImpl) isEnabled(cacheId dto.CacheIdRef) bool {
 type ServiceDisabled struct {
 }
 
-func (s *ServiceDisabled) GetAll(reqs []*dto.ResolvedCacheId) (*GetResult, error) {
-	return &GetResult{
+func (s *ServiceDisabled) GetAll(reqs []*dto.ResolvedCacheId) (*dto.GetResult, error) {
+	return &dto.GetResult{
 			Hits:    []*dto.ResolvedCacheHit{},
 			Misses:  []*dto.ResolvedCacheId{},
 			Skipped: reqs,

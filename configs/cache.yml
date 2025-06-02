@@ -99,10 +99,6 @@ layers:
   - name: "rocksdb-l2"
     mode: "enabled"
 
-api:
-  timeout: 5s
-  retries: 3
-
 
 
 # ==== Описание отдельных кэшей ===============================================
@@ -117,7 +113,6 @@ caches:
       - enabled: true
         ttl: 6h
     Api:
-      enabled: true
       getBatch:
         timeout: 10s
         url: "localhost:8080/user"

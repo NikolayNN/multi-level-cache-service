@@ -63,7 +63,7 @@ func (r *ResolvedCacheId) GetStorageKey() string { return r.StorageKey }
 // содержит все координаты кэша и его значение
 type ResolvedCacheEntry struct {
 	ResolvedCacheId *ResolvedCacheId
-	Value           json.RawMessage
+	Value           *json.RawMessage
 }
 
 func (r *ResolvedCacheEntry) GetStorageKey() string { return r.ResolvedCacheId.GetStorageKey() }
@@ -80,3 +80,15 @@ func (r *ResolvedCacheHit) GetStorageKey() string { return r.ResolvedCacheEntry.
 
 func (r *ResolvedCacheHit) GetCacheName() string { return r.ResolvedCacheEntry.GetCacheName() }
 func (r *ResolvedCacheHit) GetKey() string       { return r.ResolvedCacheEntry.GetKey() }
+
+type GetResult struct {
+	Hits    []*ResolvedCacheHit
+	Misses  []*ResolvedCacheId
+	Skipped []*ResolvedCacheId
+}
+
+func (r *GetResult) Merge(other *GetResult) {
+	r.Hits = append(r.Hits, other.Hits...)
+	r.Misses = append(r.Misses, other.Misses...)
+	r.Skipped = append(r.Skipped, other.Skipped...)
+}

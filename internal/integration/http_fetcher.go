@@ -1,4 +1,6 @@
-package client
+// Package integration предоставляет компоненты для объединения результатов
+// из внешнего HTTP API, поддерживает таймауты и пакетные запросы по ключам.
+package integration
 
 import (
 	"aur-cache-service/internal/cache/config"
@@ -8,20 +10,21 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"time"
 )
 
-// HttpBatchFetcher определяет интерфейс для HTTP-клиента,
+// httpBatchFetcher определяет интерфейс для HTTP-клиента,
 // который выполняет пакетные запросы к внешнему API, получая
 // данные по списку ключей и возвращая JSON-объекты по ключу.
-type HttpBatchFetcher interface {
+type httpBatchFetcher interface {
 
 	// GetAll отправляет POST-запрос с массивом ключей и возвращает
 	// результат в виде отображения ключей на JSON-объекты.
-	GetAll(keys []string, cfg config.ApiBatchConfig) (map[string]json.RawMessage, error)
+	GetAll(ctx context.Context, keys []string, cfg *config.ApiBatchConfig) (map[string]*json.RawMessage, error)
 }
 
-// HttpBatchFetcherImpl — реализация HttpBatchFetcher,
+// httpBatchFetcherImpl — реализация httpBatchFetcher,
 // предназначенная для получения данных из внешнего API по ключам.
 //
 // Описание работы:
@@ -36,20 +39,20 @@ type HttpBatchFetcher interface {
 //
 //	{ "id": ["123", "456"] }  // при keyType: string
 //	{ "id": [123, 456] }      // при keyType: number
-type HttpBatchFetcherImpl struct {
+type httpBatchFetcherImpl struct {
 	client *http.Client
 }
 
-func NewHttpBatchFetcher(c *http.Client) *HttpBatchFetcherImpl {
-	return &HttpBatchFetcherImpl{client: c}
+func newHttpBatchFetcher(c *http.Client) *httpBatchFetcherImpl {
+	return &httpBatchFetcherImpl{client: c}
 }
 
 const defaultTimeout = 15 * time.Second
 
-func (f *HttpBatchFetcherImpl) GetAll(keys []string, cfg *config.ApiBatchConfig) (map[string]json.RawMessage, error) {
+func (f *httpBatchFetcherImpl) GetAll(ctx context.Context, keys []string, cfg *config.ApiBatchConfig) (map[string]*json.RawMessage, error) {
 
 	if len(keys) == 0 {
-		return map[string]json.RawMessage{}, nil
+		return map[string]*json.RawMessage{}, nil
 	}
 
 	bodyBytes, err := f.prepareBody(keys, cfg)
@@ -62,8 +65,12 @@ func (f *HttpBatchFetcherImpl) GetAll(keys []string, cfg *config.ApiBatchConfig)
 		timeout = cfg.Timeout
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
+
+	if cfg.URL == "" {
+		return nil, fmt.Errorf("API URL is empty")
+	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, cfg.URL, bytes.NewReader(bodyBytes))
 	if err != nil {
@@ -86,7 +93,7 @@ func (f *HttpBatchFetcherImpl) GetAll(keys []string, cfg *config.ApiBatchConfig)
 		return nil, fmt.Errorf("bad response (%d): %s", resp.StatusCode, string(respBody))
 	}
 
-	var result map[string]json.RawMessage
+	var result map[string]*json.RawMessage
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
@@ -95,7 +102,7 @@ func (f *HttpBatchFetcherImpl) GetAll(keys []string, cfg *config.ApiBatchConfig)
 }
 
 // prepareBody формирует JSON-тело запроса с учётом типа ключей (строковые или числовые).
-func (f *HttpBatchFetcherImpl) prepareBody(keys []string, cfg *config.ApiBatchConfig) (bodyBytes []byte, err error) {
+func (f *httpBatchFetcherImpl) prepareBody(keys []string, cfg *config.ApiBatchConfig) (bodyBytes []byte, err error) {
 
 	var payload map[string]interface{}
 
@@ -103,6 +110,9 @@ func (f *HttpBatchFetcherImpl) prepareBody(keys []string, cfg *config.ApiBatchCo
 	case config.KeyTypeNumber:
 		converted := make([]json.Number, 0, len(keys))
 		for _, k := range keys {
+			if _, err := strconv.ParseFloat(k, 64); err != nil {
+				return nil, fmt.Errorf("invalid numeric key %q: %w", k, err)
+			}
 			converted = append(converted, json.Number(k))
 		}
 		payload = map[string]interface{}{cfg.Prop: converted}
