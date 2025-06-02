@@ -1,4 +1,4 @@
-package controller
+package cache
 
 import (
 	"aur-cache-service/api/dto"
