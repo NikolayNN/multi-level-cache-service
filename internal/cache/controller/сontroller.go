@@ -48,7 +48,7 @@ import (
 //	└──────────────┘
 
 type Controller interface {
-	GetAll(reqs []*dto.ResolvedCacheId) (results []*providers.GetResult)
+	GetAll(reqs []*dto.ResolvedCacheId) (results []*dto.GetResult)
 	PutAll(entries []*dto.ResolvedCacheEntry, boundLevel int)
 	DeleteAll(reqs []*dto.ResolvedCacheId)
 }
@@ -62,14 +62,14 @@ func createControllerImpl(services []providers.Service) Controller {
 }
 
 // GetAll обходит все уровни кэша сверху вниз, собирая значения и возвращая срез GetResult для каждого слоя.
-func (c *ControllerImpl) GetAll(reqs []*dto.ResolvedCacheId) (results []*providers.GetResult) {
+func (c *ControllerImpl) GetAll(reqs []*dto.ResolvedCacheId) (results []*dto.GetResult) {
 
-	results = make([]*providers.GetResult, len(c.services))
+	results = make([]*dto.GetResult, len(c.services))
 	for i, service := range c.services {
 		r, err := service.GetAll(reqs)
 		if err != nil {
 			log.Printf("Layer %d unavailable: %v", i, err)
-			results[i] = &providers.GetResult{
+			results[i] = &dto.GetResult{
 				Hits:    []*dto.ResolvedCacheHit{},
 				Misses:  []*dto.ResolvedCacheId{},
 				Skipped: reqs,
