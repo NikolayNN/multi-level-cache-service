@@ -38,11 +38,11 @@ func (c *Client) BatchGet(keys []string) (map[string]string, error) {
 	return result, nil
 }
 
-func (c *Client) BatchPut(items map[string]string, ttls map[string]int64) error {
+func (c *Client) BatchPut(items map[string]string, ttls map[string]time.Duration) error {
 	for key, val := range items {
 		var expiration time.Duration
 		if ttl, ok := ttls[key]; ok && ttl > 0 {
-			expiration = time.Duration(ttl) * time.Second
+			expiration = ttl
 		}
 		c.cache.SetWithTTL(key, val, int64(len(val)), expiration)
 	}

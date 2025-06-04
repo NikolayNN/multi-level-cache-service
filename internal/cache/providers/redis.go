@@ -61,7 +61,7 @@ func (c *Redis) BatchGet(keys []string) (map[string]string, error) {
 }
 
 // BatchPut сохраняет несколько значений за один запрос
-func (c *Redis) BatchPut(items map[string]string, ttls map[string]int64) error {
+func (c *Redis) BatchPut(items map[string]string, ttls map[string]time.Duration) error {
 	if len(items) == 0 {
 		return nil
 	}
@@ -71,7 +71,7 @@ func (c *Redis) BatchPut(items map[string]string, ttls map[string]int64) error {
 	for key, value := range items {
 		var expiration time.Duration
 		if ttl, exists := ttls[key]; exists && ttl > 0 {
-			expiration = time.Duration(ttl) * time.Second
+			expiration = ttl
 		}
 		pipe.Set(c.ctx, key, value, expiration)
 	}

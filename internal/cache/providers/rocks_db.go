@@ -9,6 +9,8 @@ import (
 	"github.com/linxGnu/grocksdb"
 )
 
+const rocksDbTtlPrefix = "$ttl:"
+
 type RocksDb struct {
 	db        *grocksdb.DB
 	readOpts  *grocksdb.ReadOptions
@@ -84,7 +86,7 @@ func (c *RocksDb) BatchGet(keys []string) (map[string]string, error) {
 }
 
 // BatchPut сохраняет несколько значений за один запрос
-func (c *RocksDb) BatchPut(items map[string]string, ttls map[string]int64) error {
+func (c *RocksDb) BatchPut(items map[string]string, ttls map[string]time.Duration) error {
 	if len(items) == 0 {
 		return nil
 	}
@@ -103,11 +105,11 @@ func (c *RocksDb) BatchPut(items map[string]string, ttls map[string]int64) error
 
 		// Обработка TTL, если он указан
 		if ttl, exists := ttls[key]; exists && ttl > 0 {
-			expiration := time.Now().Add(time.Duration(ttl) * time.Second)
+			expiration := time.Now().Add(ttl)
 			c.ttlCache[key] = expiration
 
 			// Сохраняем TTL в базу данных
-			ttlKey := "ttl:" + key
+			ttlKey := "$ttl:" + key
 			ttlValue := strconv.FormatInt(expiration.UnixNano(), 10)
 			ttlBatch.Put([]byte(ttlKey), []byte(ttlValue))
 		}
@@ -150,7 +152,7 @@ func (c *RocksDb) BatchDelete(keys []string) error {
 
 		// Удаление TTL, если он был
 		delete(c.ttlCache, key)
-		ttlKey := "ttl:" + key
+		ttlKey := rocksDbTtlPrefix + key
 		ttlBatch.Delete([]byte(ttlKey))
 	}
 
@@ -190,7 +192,7 @@ func (c *RocksDb) isExpired(key string) bool {
 	}
 
 	// Если нет в кэше, проверяем в базе данных
-	ttlKey := "ttl:" + key
+	ttlKey := rocksDbTtlPrefix + key
 	slice, err := c.db.Get(c.readOpts, []byte(ttlKey))
 	if err != nil || !slice.Exists() {
 		if slice != nil {

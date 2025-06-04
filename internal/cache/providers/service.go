@@ -5,6 +5,7 @@ import (
 	config2 "aur-cache-service/internal/cache/config"
 	"encoding/json"
 	"fmt"
+	"time"
 )
 
 // Service обеспечивает доступ к конкретному уровню кэширования.
@@ -140,7 +141,7 @@ func (s *ServiceImpl) GetAll(reqs []*dto.ResolvedCacheId) (*dto.GetResult, error
 // Пропускает записи с отключённым слоем. Возвращает ошибку, если BatchPut не удался.
 func (s *ServiceImpl) PutAll(reqs []*dto.ResolvedCacheEntry) (err error) {
 	entries := make(map[string]string, len(reqs))
-	ttls := make(map[string]int64, len(reqs))
+	ttls := make(map[string]time.Duration, len(reqs))
 	for _, req := range reqs {
 		if !s.isEnabled(req) {
 			continue
@@ -188,9 +189,9 @@ func (s *ServiceImpl) categorizeRequests(reqs []*dto.ResolvedCacheId) (keyToRequ
 	return
 }
 
-func (s *ServiceImpl) getTtl(cacheId dto.CacheIdRef) int64 {
+func (s *ServiceImpl) getTtl(cacheId dto.CacheIdRef) time.Duration {
 	cache := s.configService.GetCacheByCacheId(cacheId)
-	return cache.Layers[s.level].TTL.Milliseconds()
+	return cache.Layers[s.level].TTL
 }
 
 func (s *ServiceImpl) isEnabled(cacheId dto.CacheIdRef) bool {
