@@ -22,13 +22,13 @@ import (
 //     Сохраняет значения во все уровни до заданного уровня включительно.
 //     Это используется, чтобы "прокинуть" значения вниз (например, при кэшировании результата запроса).
 //
-//   - DeleteAll:
+//   - EvictAll:
 //     Удаляет значения со всех уровней.
 //
 // Пример сценария:
 //   1. Клиент запрашивает значения → GetAll обходит уровни и возвращает найденные значения.
 //   2. После получения значений, недостающие ключи можно сохранить в нижние уровни через PutAll.
-//   3. При необходимости — удалить данные из всех слоёв через DeleteAll.
+//   3. При необходимости — удалить данные из всех слоёв через EvictAll.
 //
 // Каждый слой реализован через интерфейс Service и управляется независимо.
 // 	┌──────────────┐
@@ -50,6 +50,7 @@ import (
 type Controller interface {
 	GetAll(reqs []*dto.ResolvedCacheId) (results []*dto.GetResult)
 	PutAll(entries []*dto.ResolvedCacheEntry, boundLevel int)
+	PutAllToAllLevels(entries []*dto.ResolvedCacheEntry)
 	DeleteAll(reqs []*dto.ResolvedCacheId)
 }
 
@@ -93,6 +94,10 @@ func (c *ControllerImpl) PutAll(entries []*dto.ResolvedCacheEntry, boundLevel in
 			log.Printf("Layer %d unavailable: %v", i, err)
 		}
 	}
+}
+
+func (c *ControllerImpl) PutAllToAllLevels(entries []*dto.ResolvedCacheEntry) {
+	c.PutAll(entries, len(c.services)-1)
 }
 
 // DeleteAll удаляет значения со всех уровней

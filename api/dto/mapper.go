@@ -10,11 +10,11 @@ type ResolverMapper struct {
 
 const StorageKeySeparator = ":"
 
-func NewResolverService(cacheConfigService *config.CacheServiceImpl) *ResolverMapper {
+func NewResolverMapper(cacheConfigService *config.CacheServiceImpl) *ResolverMapper {
 	return &ResolverMapper{cacheConfigService: cacheConfigService}
 }
 
-func (s *ResolverMapper) MapAllResolveCacheEntry(cacheEntries []*CacheEntry) []*ResolvedCacheEntry {
+func (s *ResolverMapper) MapAllResolvedCacheEntry(cacheEntries []*CacheEntry) []*ResolvedCacheEntry {
 	resolved := make([]*ResolvedCacheEntry, 0, len(cacheEntries))
 	for _, req := range cacheEntries {
 		cacheReq := s.mapResolvedCacheEntry(req)
@@ -24,7 +24,7 @@ func (s *ResolverMapper) MapAllResolveCacheEntry(cacheEntries []*CacheEntry) []*
 }
 
 func (s *ResolverMapper) mapResolvedCacheEntry(cacheEntry *CacheEntry) *ResolvedCacheEntry {
-	resolvedCacheId := s.MapResolvedCacheId(cacheEntry.CacheId)
+	resolvedCacheId := s.ьapResolvedCacheId(cacheEntry.CacheId)
 	return &ResolvedCacheEntry{
 		ResolvedCacheId: resolvedCacheId,
 		Value:           cacheEntry.Value,
@@ -34,13 +34,13 @@ func (s *ResolverMapper) mapResolvedCacheEntry(cacheEntry *CacheEntry) *Resolved
 func (s *ResolverMapper) MapAllResolvedCacheId(cacheIds []*CacheId) []*ResolvedCacheId {
 	resolved := make([]*ResolvedCacheId, 0, len(cacheIds))
 	for _, req := range cacheIds {
-		cacheReq := s.MapResolvedCacheId(req)
+		cacheReq := s.ьapResolvedCacheId(req)
 		resolved = append(resolved, cacheReq)
 	}
 	return resolved
 }
 
-func (s *ResolverMapper) MapResolvedCacheId(cacheId *CacheId) *ResolvedCacheId {
+func (s *ResolverMapper) ьapResolvedCacheId(cacheId *CacheId) *ResolvedCacheId {
 	return &ResolvedCacheId{
 		CacheId:    cacheId,
 		StorageKey: s.toStorageKey(cacheId),
@@ -50,4 +50,22 @@ func (s *ResolverMapper) MapResolvedCacheId(cacheId *CacheId) *ResolvedCacheId {
 func (s *ResolverMapper) toStorageKey(cacheId CacheIdRef) string {
 	prefix := s.cacheConfigService.GetPrefixByCacheId(cacheId)
 	return prefix + StorageKeySeparator + cacheId.GetKey()
+}
+
+func (s *ResolverMapper) MapAllCacheEntryHit(resolvedHits []*ResolvedCacheHit) []*CacheEntryHit {
+	hits := make([]*CacheEntryHit, 0, len(resolvedHits))
+	for _, rh := range resolvedHits {
+		hits = append(hits, s.mapCacheEntryHit(rh))
+	}
+	return hits
+}
+
+func (s *ResolverMapper) mapCacheEntryHit(resolved *ResolvedCacheHit) *CacheEntryHit {
+	return &CacheEntryHit{
+		CacheEntry: &CacheEntry{
+			CacheId: resolved.ResolvedCacheEntry.ResolvedCacheId.CacheId,
+			Value:   resolved.ResolvedCacheEntry.Value,
+		},
+		Found: resolved.Found,
+	}
 }

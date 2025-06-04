@@ -1,0 +1,96 @@
+package manager
+
+import (
+	"aur-cache-service/api/dto"
+	"aur-cache-service/internal/cache"
+	"aur-cache-service/internal/integration"
+	"log"
+)
+
+// Manager определяет высокоуровневый интерфейс управления данными в многослойном кэше.
+//
+// Интерфейс инкапсулирует:
+//   - преобразование внешних dto.CacheId / dto.CacheEntry во внутренние ResolvedCacheId / ResolvedCacheEntry;
+//   - получение данных из кэша с fallback на внешний источник;
+//   - автоматическое заполнение пропущенных уровней при hit на нижних слоях;
+//   - массовую вставку и удаление значений во всех слоях кэша.
+//
+// Это упрощает использование кэша, позволяя клиентскому коду работать с простыми типами и не заботиться о внутренних деталях.
+type Manager interface {
+
+	// GetAll получает значения по заданным ключам.
+	// Выполняет поиск во всех слоях кэша сверху вниз, при промахе — запрашивает внешний источник.
+	// Затем актуализирует недостающие уровни кэша.
+	GetAll(ids []*dto.CacheId) []*dto.CacheEntryHit
+
+	// PutAll вставляет записи во все уровни кэша.
+	PutAll(entries []*dto.CacheEntry)
+
+	// EvictAll удаляет записи со всех уровней кэша.
+	EvictAll(ids []*dto.CacheId)
+}
+
+type ManagerImpl struct {
+	cacheController    cache.Controller
+	externalController integration.Controller
+	mapper             dto.ResolverMapper
+}
+
+func (m *ManagerImpl) GetAll(cacheIds []*dto.CacheId) []*dto.CacheEntryHit {
+
+	resolvedIds := m.mapper.MapAllResolvedCacheId(cacheIds)
+	getResults := m.cacheController.GetAll(resolvedIds)
+
+	// collect
+	finalHits := make([]*dto.ResolvedCacheHit, 0, len(cacheIds))
+	for _, r := range getResults {
+		finalHits = append(finalHits, r.Hits...)
+	}
+	fromExternal := m.externalController.GetAll(getResults[len(getResults)-1].Misses)
+	finalHits = append(finalHits, fromExternal.Hits...)
+
+	go m.fillMissingLevels(finalHits, getResults)
+
+	return m.mapper.MapAllCacheEntryHit(finalHits)
+}
+
+func (m *ManagerImpl) fillMissingLevels(finalHits []*dto.ResolvedCacheHit, getResults []*dto.GetResult) {
+
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("panic in goroutine fillMissingLevels: %v", r)
+		}
+	}()
+
+	hitMap := make(map[string]*dto.ResolvedCacheHit, len(finalHits))
+	for _, hit := range finalHits {
+		hitMap[hit.GetStorageKey()] = hit
+	}
+
+	for level, result := range getResults {
+		if level == 0 {
+			continue
+		}
+
+		toPut := make([]*dto.ResolvedCacheEntry, 0)
+		for _, missed := range result.Misses {
+			if hit, ok := hitMap[missed.GetStorageKey()]; ok {
+				toPut = append(toPut, hit.ResolvedCacheEntry)
+			}
+		}
+
+		if len(toPut) > 0 {
+			m.cacheController.PutAll(toPut, level-1)
+		}
+	}
+}
+
+func (m *ManagerImpl) PutAll(entries []*dto.CacheEntry) {
+	resolvedEntries := m.mapper.MapAllResolvedCacheEntry(entries)
+	m.cacheController.PutAllToAllLevels(resolvedEntries)
+}
+
+func (m *ManagerImpl) EvictAll(ids []*dto.CacheId) {
+	resolvedIds := m.mapper.MapAllResolvedCacheId(ids)
+	m.cacheController.DeleteAll(resolvedIds)
+}

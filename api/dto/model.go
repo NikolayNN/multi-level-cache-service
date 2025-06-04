@@ -16,8 +16,8 @@ type CacheId struct {
 
 // Внешний API содержит минимальные данные для идентификации и значение используется для PUT
 type CacheEntry struct {
-	CacheId *CacheId        `json:",inline"`
-	Value   json.RawMessage `json:"v"`
+	CacheId *CacheId         `json:",inline"`
+	Value   *json.RawMessage `json:"v"`
 }
 
 // Внешний API содержит минимальные данные для идентифиации, значение и др информацию это результат GET
