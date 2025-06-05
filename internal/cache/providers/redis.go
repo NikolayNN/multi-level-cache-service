@@ -104,7 +104,7 @@ func (c *Redis) BatchDelete(ctx context.Context, keys []string) error {
 
 	// Обрабатываем каждый chunk отдельно
 	for chunkIndex, chunk := range chunks {
-		_, err := c.rdb.Del(ctx, chunk...).Result()
+		_, err := c.rdb.Unlink(ctx, chunk...).Result()
 		if err != nil {
 			return fmt.Errorf("ошибка пакетного удаления из Redis (chunk %d/%d, keys: %d): %w",
 				chunkIndex+1, len(chunks), len(chunk), err)

@@ -118,9 +118,7 @@ func splitKeysToChunks(keys []string, minSize int, maxSize int) [][]string {
 		if end > len(keys) {
 			end = len(keys)
 		}
-
-		chunk := make([]string, end-i)
-		copy(chunk, keys[i:end])
+		chunk := keys[i:end]
 		chunks = append(chunks, chunk)
 	}
 
