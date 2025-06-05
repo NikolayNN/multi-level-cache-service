@@ -48,7 +48,7 @@ func (s *ResolverMapper) ьapResolvedCacheId(cacheId *CacheId) *ResolvedCacheId 
 }
 
 func (s *ResolverMapper) toStorageKey(cacheId CacheIdRef) string {
-	prefix := s.cacheConfigService.GetPrefixByCacheId(cacheId)
+	prefix := s.cacheConfigService.GetPrefix(cacheId)
 	return prefix + StorageKeySeparator + cacheId.GetKey()
 }
 

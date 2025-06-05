@@ -2,7 +2,8 @@ package providers
 
 import (
 	"aur-cache-service/api/dto"
-	config2 "aur-cache-service/internal/cache/config"
+	"aur-cache-service/internal/cache/config"
+	"context"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -48,13 +49,13 @@ import (
 //
 // Это позволяет централизованно управлять включением/отключением слоёв без изменения клиентского кода.
 type Service interface {
-	GetAll(reqs []*dto.ResolvedCacheId) (*dto.GetResult, error)
-	PutAll(reqs []*dto.ResolvedCacheEntry) error
-	DeleteAll(reqs []*dto.ResolvedCacheId) error
+	GetAll(ctx context.Context, reqs []*dto.ResolvedCacheId) (*dto.GetResult, error)
+	PutAll(ctx context.Context, reqs []*dto.ResolvedCacheEntry) error
+	DeleteAll(ctx context.Context, reqs []*dto.ResolvedCacheId) error
 	Close() error
 }
 
-func CreateNewServiceList(providerConfigs []*config2.LayerProvider, cacheServiceConfig config2.CacheService) ([]Service, error) {
+func CreateNewServiceList(providerConfigs []*config.LayerProvider, cacheServiceConfig config.CacheService) ([]Service, error) {
 	services := make([]Service, 0, len(providerConfigs))
 
 	for i, providerConfig := range providerConfigs {
@@ -67,8 +68,8 @@ func CreateNewServiceList(providerConfigs []*config2.LayerProvider, cacheService
 	return services, nil
 }
 
-func createService(providerConfig *config2.LayerProvider, cacheServiceConfig config2.CacheService, level int) (Service, error) {
-	if providerConfig.Mode == config2.LayerModeDisabled {
+func createService(providerConfig *config.LayerProvider, cacheServiceConfig config.CacheService, level int) (Service, error) {
+	if providerConfig.Mode == config.LayerModeDisabled {
 		return &ServiceDisabled{}, nil
 	}
 
@@ -81,11 +82,11 @@ func createService(providerConfig *config2.LayerProvider, cacheServiceConfig con
 
 func initProvider(p interface{}) (CacheProvider, error) {
 	switch c := p.(type) {
-	case config2.Ristretto:
+	case config.Ristretto:
 		return NewRistretto(c)
-	case config2.Redis:
-		return NewRedis(c)
-	case config2.RocksDB:
+	case config.Redis:
+		return NewRedis(context.Background(), c)
+	case config.RocksDB:
 		return NewRocksDb(c)
 	default:
 		return nil, fmt.Errorf("unsupported provider type: %T", c)
@@ -98,19 +99,19 @@ func initProvider(p interface{}) (CacheProvider, error) {
 
 type ServiceImpl struct {
 	client        CacheProvider
-	configService config2.CacheService
+	configService config.CacheService
 	level         int
 }
 
 // GetAll получает значения для ключей, у которых включён текущий слой.
 // На выходе — разделение на hits/misses/skipped + возможная ошибка клиента
-func (s *ServiceImpl) GetAll(reqs []*dto.ResolvedCacheId) (*dto.GetResult, error) {
+func (s *ServiceImpl) GetAll(ctx context.Context, reqs []*dto.ResolvedCacheId) (*dto.GetResult, error) {
 	keyToRequest, enabledKeys, skipped := s.categorizeRequests(reqs)
 	if len(enabledKeys) == 0 {
 		return &dto.GetResult{Hits: []*dto.ResolvedCacheHit{}, Misses: []*dto.ResolvedCacheId{}, Skipped: skipped}, nil
 	}
 
-	values, err := s.client.BatchGet(enabledKeys)
+	values, err := s.client.BatchGet(ctx, enabledKeys)
 	if err != nil {
 		return nil, fmt.Errorf("BatchGet error: %w", err)
 	}
@@ -119,10 +120,11 @@ func (s *ServiceImpl) GetAll(reqs []*dto.ResolvedCacheId) (*dto.GetResult, error
 	misses := make([]*dto.ResolvedCacheId, 0, len(enabledKeys))
 	for _, key := range enabledKeys {
 		if val, ok := values[key]; ok {
+			value := json.RawMessage(val)
 			hits = append(hits, &dto.ResolvedCacheHit{
 				ResolvedCacheEntry: &dto.ResolvedCacheEntry{
 					ResolvedCacheId: keyToRequest[key],
-					Value:           json.RawMessage(val),
+					Value:           &value,
 				},
 				Found: true,
 			})
@@ -139,7 +141,7 @@ func (s *ServiceImpl) GetAll(reqs []*dto.ResolvedCacheId) (*dto.GetResult, error
 
 // PutAll сохраняет все значения в слой, если он включён для соответствующего CacheId.
 // Пропускает записи с отключённым слоем. Возвращает ошибку, если BatchPut не удался.
-func (s *ServiceImpl) PutAll(reqs []*dto.ResolvedCacheEntry) (err error) {
+func (s *ServiceImpl) PutAll(ctx context.Context, reqs []*dto.ResolvedCacheEntry) (err error) {
 	entries := make(map[string]string, len(reqs))
 	ttls := make(map[string]time.Duration, len(reqs))
 	for _, req := range reqs {
@@ -153,18 +155,18 @@ func (s *ServiceImpl) PutAll(reqs []*dto.ResolvedCacheEntry) (err error) {
 	if len(entries) == 0 {
 		return
 	}
-	return s.client.BatchPut(entries, ttls)
+	return s.client.BatchPut(ctx, entries, ttls)
 }
 
 // DeleteAll удаляет все значения, у которых включён текущий слой.
 // Пропускает отключённые. Возвращает ошибку, если удаление не удалось.
-func (s *ServiceImpl) DeleteAll(reqs []*dto.ResolvedCacheId) (err error) {
+func (s *ServiceImpl) DeleteAll(ctx context.Context, reqs []*dto.ResolvedCacheId) (err error) {
 	_, keys, _ := s.categorizeRequests(reqs)
 	if len(keys) == 0 {
 		return
 	}
 
-	return s.client.BatchDelete(keys)
+	return s.client.BatchDelete(ctx, keys)
 }
 
 func (s *ServiceImpl) Close() error {
@@ -190,13 +192,11 @@ func (s *ServiceImpl) categorizeRequests(reqs []*dto.ResolvedCacheId) (keyToRequ
 }
 
 func (s *ServiceImpl) getTtl(cacheId dto.CacheIdRef) time.Duration {
-	cache := s.configService.GetCacheByCacheId(cacheId)
-	return cache.Layers[s.level].TTL
+	return s.configService.GetTtl(cacheId, s.level)
 }
 
 func (s *ServiceImpl) isEnabled(cacheId dto.CacheIdRef) bool {
-	cache := s.configService.GetCacheByCacheId(cacheId)
-	return cache.Layers[s.level].Enabled
+	return s.configService.IsLevelEnabled(cacheId, s.level)
 }
 
 //////////////////////////
@@ -206,7 +206,7 @@ func (s *ServiceImpl) isEnabled(cacheId dto.CacheIdRef) bool {
 type ServiceDisabled struct {
 }
 
-func (s *ServiceDisabled) GetAll(reqs []*dto.ResolvedCacheId) (*dto.GetResult, error) {
+func (s *ServiceDisabled) GetAll(ctx context.Context, reqs []*dto.ResolvedCacheId) (*dto.GetResult, error) {
 	return &dto.GetResult{
 			Hits:    []*dto.ResolvedCacheHit{},
 			Misses:  []*dto.ResolvedCacheId{},
@@ -215,10 +215,10 @@ func (s *ServiceDisabled) GetAll(reqs []*dto.ResolvedCacheId) (*dto.GetResult, e
 		nil
 }
 
-func (s *ServiceDisabled) PutAll(reqs []*dto.ResolvedCacheEntry) error {
+func (s *ServiceDisabled) PutAll(ctx context.Context, reqs []*dto.ResolvedCacheEntry) error {
 	return nil
 }
-func (s *ServiceDisabled) DeleteAll(reqs []*dto.ResolvedCacheId) error {
+func (s *ServiceDisabled) DeleteAll(ctx context.Context, reqs []*dto.ResolvedCacheId) error {
 	return nil
 }
 

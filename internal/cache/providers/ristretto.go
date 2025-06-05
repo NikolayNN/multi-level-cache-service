@@ -2,6 +2,7 @@ package providers
 
 import (
 	"aur-cache-service/internal/cache/config"
+	"context"
 	"github.com/dgraph-io/ristretto"
 	"time"
 )
@@ -25,7 +26,7 @@ func NewRistretto(cfg config.Ristretto) (*Client, error) {
 	}, nil
 }
 
-func (c *Client) BatchGet(keys []string) (map[string]string, error) {
+func (c *Client) BatchGet(ctx context.Context, keys []string) (map[string]string, error) {
 	result := make(map[string]string)
 	for _, key := range keys {
 		val, ok := c.cache.Get(key)
@@ -38,7 +39,7 @@ func (c *Client) BatchGet(keys []string) (map[string]string, error) {
 	return result, nil
 }
 
-func (c *Client) BatchPut(items map[string]string, ttls map[string]time.Duration) error {
+func (c *Client) BatchPut(ctx context.Context, items map[string]string, ttls map[string]time.Duration) error {
 	for key, val := range items {
 		var expiration time.Duration
 		if ttl, ok := ttls[key]; ok && ttl > 0 {
@@ -49,7 +50,7 @@ func (c *Client) BatchPut(items map[string]string, ttls map[string]time.Duration
 	return nil
 }
 
-func (c *Client) BatchDelete(keys []string) error {
+func (c *Client) BatchDelete(ctx context.Context, keys []string) error {
 	for _, key := range keys {
 		c.cache.Del(key)
 	}

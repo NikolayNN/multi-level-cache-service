@@ -10,11 +10,14 @@ import (
 
 type Redis struct {
 	rdb *redis.Client
-	ctx context.Context
 }
 
-func NewRedis(cfg config.Redis) (*Redis, error) {
-	ctx := context.Background()
+const (
+	minChunk = 500
+	maxChunk = 600
+)
+
+func NewRedis(ctx context.Context, cfg config.Redis) (*Redis, error) {
 
 	rdb := redis.NewClient(&redis.Options{
 		Addr:         fmt.Sprintf("%s:%d", cfg.Host, cfg.Port),
@@ -32,27 +35,30 @@ func NewRedis(cfg config.Redis) (*Redis, error) {
 
 	return &Redis{
 		rdb: rdb,
-		ctx: ctx,
 	}, nil
 }
 
-// BatchGet получает несколько значений за один запрос
-func (c *Redis) BatchGet(keys []string) (map[string]string, error) {
+// BatchGet получает несколько значений за один запрос, разбивая их на chunk'и
+func (c *Redis) BatchGet(ctx context.Context, keys []string) (map[string]string, error) {
 	if len(keys) == 0 {
 		return make(map[string]string), nil
 	}
 
-	result := make(map[string]string)
+	result := make(map[string]string, len(keys))
+	chunks := splitKeysToChunks(keys, minChunk, maxChunk)
 
-	vals, err := c.rdb.MGet(c.ctx, keys...).Result()
-	if err != nil {
-		return nil, fmt.Errorf("ошибка пакетного получения из Redis: %w", err)
-	}
+	for _, chunk := range chunks {
+		vals, err := c.rdb.MGet(ctx, chunk...).Result()
+		if err != nil {
+			return nil, fmt.Errorf("ошибка пакетного получения из Redis: %w", err)
+		}
 
-	for i, key := range keys {
-		if vals[i] != nil {
-			if str, ok := vals[i].(string); ok {
-				result[key] = str
+		// Обрабатываем результаты текущего chunk'а
+		for i, key := range chunk {
+			if i < len(vals) && vals[i] != nil {
+				if str, ok := vals[i].(string); ok {
+					result[key] = str
+				}
 			}
 		}
 	}
@@ -60,40 +66,49 @@ func (c *Redis) BatchGet(keys []string) (map[string]string, error) {
 	return result, nil
 }
 
-// BatchPut сохраняет несколько значений за один запрос
-func (c *Redis) BatchPut(items map[string]string, ttls map[string]time.Duration) error {
+// BatchPut сохраняет несколько значений за один запрос, разбивая их на chunk'и
+func (c *Redis) BatchPut(ctx context.Context, items map[string]string, ttls map[string]time.Duration) error {
 	if len(items) == 0 {
 		return nil
 	}
 
-	pipe := c.rdb.Pipeline()
+	chunks := splitKeyValueToChunks(items, minChunk, maxChunk)
 
-	for key, value := range items {
-		var expiration time.Duration
-		if ttl, exists := ttls[key]; exists && ttl > 0 {
-			expiration = ttl
+	for chunkIndex, chunk := range chunks {
+		pipe := c.rdb.Pipeline()
+
+		for key, value := range chunk {
+			var expiration time.Duration
+			if ttl, exists := ttls[key]; exists && ttl > 0 {
+				expiration = ttl
+			}
+			pipe.Set(ctx, key, value, expiration)
 		}
-		pipe.Set(c.ctx, key, value, expiration)
-	}
 
-	_, err := pipe.Exec(c.ctx)
-	if err != nil {
-		return fmt.Errorf("ошибка пакетного сохранения в Redis: %w", err)
+		_, err := pipe.Exec(ctx)
+		if err != nil {
+			return fmt.Errorf("ошибка пакетного сохранения в Redis (chunk %d): %w", chunkIndex, err)
+		}
 	}
 
 	return nil
 }
 
-// BatchDelete удаляет несколько значений за один запрос
-func (c *Redis) BatchDelete(keys []string) error {
+// BatchDelete удаляет несколько значений за один запрос, разбивая их на chunk'и
+func (c *Redis) BatchDelete(ctx context.Context, keys []string) error {
 	if len(keys) == 0 {
 		return nil
 	}
 
-	// Удаление всех ключей одной командой
-	_, err := c.rdb.Del(c.ctx, keys...).Result()
-	if err != nil {
-		return fmt.Errorf("error batch delete event: %w", err)
+	chunks := splitKeysToChunks(keys, minChunk, maxChunk)
+
+	// Обрабатываем каждый chunk отдельно
+	for chunkIndex, chunk := range chunks {
+		_, err := c.rdb.Del(ctx, chunk...).Result()
+		if err != nil {
+			return fmt.Errorf("ошибка пакетного удаления из Redis (chunk %d/%d, keys: %d): %w",
+				chunkIndex+1, len(chunks), len(chunk), err)
+		}
 	}
 
 	return nil
