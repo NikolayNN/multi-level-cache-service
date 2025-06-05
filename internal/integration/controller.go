@@ -13,7 +13,6 @@ type ControllerImpl struct {
 	service Service
 }
 
-func (c *ControllerImpl) GetAll(reqs []*dto.ResolvedCacheId) *dto.GetResult {
-	ctx := context.Background()
+func (c *ControllerImpl) GetAll(ctx context.Context, reqs []*dto.ResolvedCacheId) *dto.GetResult {
 	return c.service.GetAll(ctx, reqs)
 }
