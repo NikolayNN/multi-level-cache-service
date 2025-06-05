@@ -3,6 +3,7 @@ package providers
 import (
 	"aur-cache-service/internal/cache/config"
 	"context"
+	"fmt"
 	"github.com/dgraph-io/ristretto"
 	"time"
 )
@@ -11,14 +12,26 @@ type Client struct {
 	cache *ristretto.Cache
 }
 
+const contextCheckInterval = 100
+
 func NewRistretto(cfg config.Ristretto) (*Client, error) {
+
+	if cfg.NumCounters <= 0 {
+		return nil, fmt.Errorf("NumCounters должно быть положительным числом")
+	}
+	if cfg.MaxCostBytes() <= 0 {
+		return nil, fmt.Errorf("MaxCost должно быть положительным числом")
+	}
+	if cfg.BufferItems <= 0 {
+		return nil, fmt.Errorf("BufferItems должно быть положительным числом")
+	}
 	cache, err := ristretto.NewCache(&ristretto.Config{
 		NumCounters: cfg.NumCounters,
 		MaxCost:     int64(cfg.MaxCostBytes()),
 		BufferItems: cfg.BufferItems,
 	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("не удалось создать Ristretto кэш: %w", err)
 	}
 
 	return &Client{
@@ -27,8 +40,22 @@ func NewRistretto(cfg config.Ristretto) (*Client, error) {
 }
 
 func (c *Client) BatchGet(ctx context.Context, keys []string) (map[string]string, error) {
-	result := make(map[string]string)
-	for _, key := range keys {
+	if len(keys) == 0 {
+		return make(map[string]string), nil
+	}
+
+	result := make(map[string]string, len(keys))
+	for i, key := range keys {
+
+		// Проверяем контекст каждые 100 итераций
+		if i%contextCheckInterval == 0 {
+			select {
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			default:
+			}
+		}
+
 		val, ok := c.cache.Get(key)
 		if ok {
 			if strVal, castOk := val.(string); castOk {
@@ -40,7 +67,24 @@ func (c *Client) BatchGet(ctx context.Context, keys []string) (map[string]string
 }
 
 func (c *Client) BatchPut(ctx context.Context, items map[string]string, ttls map[string]time.Duration) error {
+	if len(items) == 0 {
+		return nil
+	}
+
+	count := 0
+
 	for key, val := range items {
+
+		// Проверяем контекст каждые 100 итераций
+		if count%contextCheckInterval == 0 {
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			default:
+			}
+		}
+		count++
+
 		var expiration time.Duration
 		if ttl, ok := ttls[key]; ok && ttl > 0 {
 			expiration = ttl
@@ -51,13 +95,30 @@ func (c *Client) BatchPut(ctx context.Context, items map[string]string, ttls map
 }
 
 func (c *Client) BatchDelete(ctx context.Context, keys []string) error {
-	for _, key := range keys {
+	if len(keys) == 0 {
+		return nil
+	}
+
+	for i, key := range keys {
+
+		// Проверяем контекст каждые 100 итераций
+		if i%contextCheckInterval == 0 {
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			default:
+			}
+		}
+
 		c.cache.Del(key)
 	}
 	return nil
 }
 
 func (c *Client) Close() error {
-	c.cache.Close()
+	if c.cache != nil {
+		c.cache.Close()
+		c.cache = nil
+	}
 	return nil
 }
