@@ -4,7 +4,9 @@ import (
 	"aur-cache-service/api/dto"
 	"aur-cache-service/internal/cache"
 	"aur-cache-service/internal/integration"
+	"context"
 	"log"
+	"time"
 )
 
 // Manager определяет высокоуровневый интерфейс управления данными в многослойном кэше.
@@ -21,7 +23,7 @@ type Manager interface {
 	// GetAll получает значения по заданным ключам.
 	// Выполняет поиск во всех слоях кэша сверху вниз, при промахе — запрашивает внешний источник.
 	// Затем актуализирует недостающие уровни кэша.
-	GetAll(ids []*dto.CacheId) []*dto.CacheEntryHit
+	GetAll(ctx context.Context, ids []*dto.CacheId) []*dto.CacheEntryHit
 
 	// PutAll вставляет записи во все уровни кэша.
 	PutAll(entries []*dto.CacheEntry)
@@ -36,25 +38,33 @@ type ManagerImpl struct {
 	mapper             dto.ResolverMapper
 }
 
-func (m *ManagerImpl) GetAll(cacheIds []*dto.CacheId) []*dto.CacheEntryHit {
+func (m *ManagerImpl) GetAll(ctx context.Context, cacheIds []*dto.CacheId) []*dto.CacheEntryHit {
 
 	resolvedIds := m.mapper.MapAllResolvedCacheId(cacheIds)
-	getResults := m.cacheController.GetAll(resolvedIds)
+	getResults := m.cacheController.GetAll(ctx, resolvedIds)
 
 	// collect
 	finalHits := make([]*dto.ResolvedCacheHit, 0, len(cacheIds))
 	for _, r := range getResults {
 		finalHits = append(finalHits, r.Hits...)
 	}
+
+	if len(getResults) == 0 {
+		return []*dto.CacheEntryHit{}
+	}
+
 	fromExternal := m.externalController.GetAll(getResults[len(getResults)-1].Misses)
 	finalHits = append(finalHits, fromExternal.Hits...)
 
-	go m.fillMissingLevels(finalHits, getResults)
+	derivedCtx, cancel := context.WithTimeout(ctx, 1000*time.Millisecond)
+	defer cancel()
+
+	go m.fillMissingLevels(derivedCtx, finalHits, getResults)
 
 	return m.mapper.MapAllCacheEntryHit(finalHits)
 }
 
-func (m *ManagerImpl) fillMissingLevels(finalHits []*dto.ResolvedCacheHit, getResults []*dto.GetResult) {
+func (m *ManagerImpl) fillMissingLevels(ctx context.Context, finalHits []*dto.ResolvedCacheHit, getResults []*dto.GetResult) {
 
 	defer func() {
 		if r := recover(); r != nil {
@@ -80,17 +90,17 @@ func (m *ManagerImpl) fillMissingLevels(finalHits []*dto.ResolvedCacheHit, getRe
 		}
 
 		if len(toPut) > 0 {
-			m.cacheController.PutAll(toPut, level-1)
+			m.cacheController.PutAll(ctx, toPut, level-1)
 		}
 	}
 }
 
-func (m *ManagerImpl) PutAll(entries []*dto.CacheEntry) {
+func (m *ManagerImpl) PutAll(ctx context.Context, entries []*dto.CacheEntry) {
 	resolvedEntries := m.mapper.MapAllResolvedCacheEntry(entries)
-	m.cacheController.PutAllToAllLevels(resolvedEntries)
+	m.cacheController.PutAllToAllLevels(ctx, resolvedEntries)
 }
 
-func (m *ManagerImpl) EvictAll(ids []*dto.CacheId) {
+func (m *ManagerImpl) EvictAll(ctx context.Context, ids []*dto.CacheId) {
 	resolvedIds := m.mapper.MapAllResolvedCacheId(ids)
-	m.cacheController.DeleteAll(resolvedIds)
+	m.cacheController.DeleteAll(ctx, resolvedIds)
 }
