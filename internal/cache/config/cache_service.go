@@ -10,6 +10,7 @@ type cacheNameable interface {
 
 type CacheService interface {
 	GetCache(cacheId cacheNameable) Cache
+	GetCacheByName(cacheName string) Cache
 	GetPrefix(cacheId cacheNameable) string
 	GetTtl(cacheId cacheNameable, level int) time.Duration
 	IsLevelEnabled(cacheId cacheNameable, level int) bool
@@ -33,7 +34,11 @@ func NewCacheService(cfg *AppConfig) CacheService {
 }
 
 func (s *CacheServiceImpl) GetCache(cacheId cacheNameable) Cache {
-	return s.Caches[cacheId.GetCacheName()]
+	return s.GetCacheByName(cacheId.GetCacheName())
+}
+
+func (s *CacheServiceImpl) GetCacheByName(cacheName string) Cache {
+	return s.Caches[cacheName]
 }
 
 func (s *CacheServiceImpl) GetPrefix(cacheId cacheNameable) string {

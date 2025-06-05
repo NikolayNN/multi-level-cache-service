@@ -70,7 +70,7 @@ func (s *ServiceImpl) GetAll(ctx context.Context, reqs []*dto.ResolvedCacheId) *
 
 // обрабатывает одну группу ключей одного кэша
 func (s *ServiceImpl) handleGroup(ctx context.Context, cacheName string, group []*dto.ResolvedCacheId) *dto.GetResult {
-	cfg := s.configService.GetByName(cacheName).Api.GetBatch
+	cfg := s.configService.GetCacheByName(cacheName).Api.GetBatch
 
 	keys := s.extractKeys(group)
 
