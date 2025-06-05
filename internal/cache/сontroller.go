@@ -3,6 +3,7 @@ package cache
 import (
 	"aur-cache-service/api/dto"
 	"aur-cache-service/internal/cache/providers"
+	"context"
 	"log"
 )
 
@@ -48,26 +49,26 @@ import (
 //	└──────────────┘
 
 type Controller interface {
-	GetAll(reqs []*dto.ResolvedCacheId) (results []*dto.GetResult)
-	PutAll(entries []*dto.ResolvedCacheEntry, boundLevel int)
-	PutAllToAllLevels(entries []*dto.ResolvedCacheEntry)
-	DeleteAll(reqs []*dto.ResolvedCacheId)
+	GetAll(ctx context.Context, reqs []*dto.ResolvedCacheId) (results []*dto.GetResult)
+	PutAll(ctx context.Context, entries []*dto.ResolvedCacheEntry, boundLevel int)
+	PutAllToAllLevels(ctx context.Context, entries []*dto.ResolvedCacheEntry)
+	DeleteAll(ctx context.Context, reqs []*dto.ResolvedCacheId)
 }
 
 type ControllerImpl struct {
 	services []providers.Service
 }
 
-func createControllerImpl(services []providers.Service) Controller {
+func CreateControllerImpl(services []providers.Service) Controller {
 	return &ControllerImpl{services: services}
 }
 
 // GetAll обходит все уровни кэша сверху вниз, собирая значения и возвращая срез GetResult для каждого слоя.
-func (c *ControllerImpl) GetAll(reqs []*dto.ResolvedCacheId) (results []*dto.GetResult) {
+func (c *ControllerImpl) GetAll(ctx context.Context, reqs []*dto.ResolvedCacheId) (results []*dto.GetResult) {
 
 	results = make([]*dto.GetResult, len(c.services))
 	for i, service := range c.services {
-		r, err := service.GetAll(reqs)
+		r, err := service.GetAll(ctx, reqs)
 		if err != nil {
 			log.Printf("Layer %d unavailable: %v", i, err)
 			results[i] = &dto.GetResult{
@@ -78,32 +79,36 @@ func (c *ControllerImpl) GetAll(reqs []*dto.ResolvedCacheId) (results []*dto.Get
 			continue
 		}
 		results[i] = r
-		reqs = append(r.Misses, r.Skipped...)
+		nextReqs := make([]*dto.ResolvedCacheId, 0, len(r.Misses)+len(r.Skipped))
+		nextReqs = append(nextReqs, r.Misses...)
+		nextReqs = append(nextReqs, r.Skipped...)
+		reqs = nextReqs
 	}
 	return
 }
 
 // PutAll вставляет значения во все уровни до boundLevel включительно
-func (c *ControllerImpl) PutAll(entries []*dto.ResolvedCacheEntry, boundLevel int) {
+func (c *ControllerImpl) PutAll(ctx context.Context, entries []*dto.ResolvedCacheEntry, boundLevel int) {
 	for i, service := range c.services {
 		if i > boundLevel {
 			break
 		}
-		err := service.PutAll(entries)
+		err := service.PutAll(ctx, entries)
 		if err != nil {
 			log.Printf("Layer %d unavailable: %v", i, err)
 		}
 	}
 }
 
-func (c *ControllerImpl) PutAllToAllLevels(entries []*dto.ResolvedCacheEntry) {
-	c.PutAll(entries, len(c.services)-1)
+func (c *ControllerImpl) PutAllToAllLevels(ctx context.Context, entries []*dto.ResolvedCacheEntry) {
+	c.PutAll(ctx, entries, len(c.services)-1)
 }
 
 // DeleteAll удаляет значения со всех уровней
-func (c *ControllerImpl) DeleteAll(reqs []*dto.ResolvedCacheId) {
+func (c *ControllerImpl) DeleteAll(ctx context.Context, reqs []*dto.ResolvedCacheId) {
+
 	for i, service := range c.services {
-		err := service.DeleteAll(reqs)
+		err := service.DeleteAll(ctx, reqs)
 		if err != nil {
 			log.Printf("Layer %d unavailable: %v", i, err)
 		}
