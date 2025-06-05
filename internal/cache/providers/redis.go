@@ -13,8 +13,8 @@ type Redis struct {
 }
 
 const (
-	minChunk = 500
-	maxChunk = 600
+	minChunk = 400
+	maxChunk = 500
 )
 
 func NewRedis(ctx context.Context, cfg config.Redis) (*Redis, error) {
