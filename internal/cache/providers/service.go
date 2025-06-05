@@ -3,6 +3,7 @@ package providers
 import (
 	"aur-cache-service/api/dto"
 	"aur-cache-service/internal/cache/config"
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -120,7 +121,7 @@ func (s *ServiceImpl) GetAll(ctx context.Context, reqs []*dto.ResolvedCacheId) (
 	misses := make([]*dto.ResolvedCacheId, 0, len(enabledKeys))
 	for _, key := range enabledKeys {
 		if val, ok := values[key]; ok {
-			value := json.RawMessage(val)
+			value := unmarshalRawJSON(val)
 			hits = append(hits, &dto.ResolvedCacheHit{
 				ResolvedCacheEntry: &dto.ResolvedCacheEntry{
 					ResolvedCacheId: keyToRequest[key],
@@ -149,7 +150,7 @@ func (s *ServiceImpl) PutAll(ctx context.Context, reqs []*dto.ResolvedCacheEntry
 			continue
 		}
 		key := req.GetStorageKey()
-		entries[key] = string(req.Value)
+		entries[key] = marshalRawJSON(req.Value)
 		ttls[key] = s.getTtl(req)
 	}
 	if len(entries) == 0 {
@@ -224,4 +225,20 @@ func (s *ServiceDisabled) DeleteAll(ctx context.Context, reqs []*dto.ResolvedCac
 
 func (s *ServiceDisabled) Close() error {
 	return nil
+}
+
+// MarshalRawJSON принимает json.RawMessage и возвращает его в «сжатом» виде,
+// без пробелов и переносов строк.
+func marshalRawJSON(val *json.RawMessage) string {
+	if val == nil {
+		return ""
+	}
+	var buf bytes.Buffer
+	_ = json.Compact(&buf, *val)
+	return buf.String()
+}
+
+// UnmarshalRawJSON остаётся без изменений – просто оборачивает строку в RawMessage.
+func unmarshalRawJSON(s string) json.RawMessage {
+	return json.RawMessage(s)
 }
