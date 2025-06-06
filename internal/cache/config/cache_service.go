@@ -9,11 +9,11 @@ type cacheNameable interface {
 }
 
 type CacheService interface {
-	GetCache(cacheId cacheNameable) Cache
-	GetCacheByName(cacheName string) Cache
-	GetPrefix(cacheId cacheNameable) string
-	GetTtl(cacheId cacheNameable, level int) time.Duration
-	IsLevelEnabled(cacheId cacheNameable, level int) bool
+	GetCache(cacheId cacheNameable) (cache Cache, ok bool)
+	GetCacheByName(cacheName string) (cache Cache, ok bool)
+	GetPrefix(cacheId cacheNameable) (prefix string, ok bool)
+	GetTtl(cacheId cacheNameable, level int) (ttl time.Duration, ok bool)
+	IsLevelEnabled(cacheId cacheNameable, level int) (enabled bool, ok bool)
 }
 
 type CacheServiceImpl struct {
@@ -33,22 +33,36 @@ func NewCacheService(cfg *AppConfig) CacheService {
 	}
 }
 
-func (s *CacheServiceImpl) GetCache(cacheId cacheNameable) Cache {
+func (s *CacheServiceImpl) GetCache(cacheId cacheNameable) (Cache, bool) {
 	return s.GetCacheByName(cacheId.GetCacheName())
 }
 
-func (s *CacheServiceImpl) GetCacheByName(cacheName string) Cache {
-	return s.Caches[cacheName]
+func (s *CacheServiceImpl) GetCacheByName(cacheName string) (Cache, bool) {
+	cache, ok := s.Caches[cacheName]
+	return cache, ok
 }
 
-func (s *CacheServiceImpl) GetPrefix(cacheId cacheNameable) string {
-	return s.Caches[cacheId.GetCacheName()].Prefix
+func (s *CacheServiceImpl) GetPrefix(cacheId cacheNameable) (string, bool) {
+	cache, ok := s.GetCache(cacheId)
+	if !ok {
+		return "", ok
+	}
+	return cache.Prefix, ok
 }
 
-func (s *CacheServiceImpl) GetTtl(cacheId cacheNameable, level int) time.Duration {
-	return s.Caches[cacheId.GetCacheName()].Layers[level].TTL
+func (s *CacheServiceImpl) GetTtl(cacheId cacheNameable, level int) (time.Duration, bool) {
+	cache, ok := s.GetCache(cacheId)
+	if !ok || level < 0 || level >= len(cache.Layers) {
+		return 0, false
+	}
+
+	return cache.Layers[level].TTL, ok
 }
 
-func (s *CacheServiceImpl) IsLevelEnabled(cacheId cacheNameable, level int) bool {
-	return s.Caches[cacheId.GetCacheName()].Layers[level].Enabled
+func (s *CacheServiceImpl) IsLevelEnabled(cacheId cacheNameable, level int) (bool, bool) {
+	cache, ok := s.GetCache(cacheId)
+	if !ok || level < 0 || level >= len(cache.Layers) {
+		return false, false
+	}
+	return cache.Layers[level].Enabled, ok
 }
