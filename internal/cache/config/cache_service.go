@@ -5,16 +5,16 @@ import (
 	"time"
 )
 
-type cacheNameable interface {
+type CacheNameable interface {
 	GetCacheName() string
 }
 
 type CacheService interface {
-	GetCache(cacheId cacheNameable) (cache Cache, err error)
+	GetCache(cacheId CacheNameable) (cache Cache, err error)
 	GetCacheByName(cacheName string) (cache Cache, err error)
-	GetPrefix(cacheId cacheNameable) (prefix string, err error)
-	GetTtl(cacheId cacheNameable, level int) (ttl time.Duration, err error)
-	IsLevelEnabled(cacheId cacheNameable, level int) (enabled bool, err error)
+	GetPrefix(cacheId CacheNameable) (prefix string, err error)
+	GetTtl(cacheId CacheNameable, level int) (ttl time.Duration, err error)
+	IsLevelEnabled(cacheId CacheNameable, level int) (enabled bool, err error)
 }
 
 type CacheServiceImpl struct {
@@ -34,7 +34,7 @@ func NewCacheService(cfg *AppConfig) CacheService {
 	}
 }
 
-func (s *CacheServiceImpl) GetCache(cacheId cacheNameable) (Cache, error) {
+func (s *CacheServiceImpl) GetCache(cacheId CacheNameable) (Cache, error) {
 	return s.GetCacheByName(cacheId.GetCacheName())
 }
 
@@ -46,7 +46,7 @@ func (s *CacheServiceImpl) GetCacheByName(cacheName string) (Cache, error) {
 	return cache, nil
 }
 
-func (s *CacheServiceImpl) GetPrefix(cacheId cacheNameable) (string, error) {
+func (s *CacheServiceImpl) GetPrefix(cacheId CacheNameable) (string, error) {
 	cache, err := s.GetCache(cacheId)
 	if err != nil {
 		return "", err
@@ -54,7 +54,7 @@ func (s *CacheServiceImpl) GetPrefix(cacheId cacheNameable) (string, error) {
 	return cache.Prefix, nil
 }
 
-func (s *CacheServiceImpl) GetTtl(cacheId cacheNameable, level int) (time.Duration, error) {
+func (s *CacheServiceImpl) GetTtl(cacheId CacheNameable, level int) (time.Duration, error) {
 	cache, err := s.GetCache(cacheId)
 	if err != nil {
 		return 0, err
@@ -68,7 +68,7 @@ func (s *CacheServiceImpl) GetTtl(cacheId cacheNameable, level int) (time.Durati
 	return layer.TTL, nil
 }
 
-func (s *CacheServiceImpl) IsLevelEnabled(cacheId cacheNameable, level int) (bool, error) {
+func (s *CacheServiceImpl) IsLevelEnabled(cacheId CacheNameable, level int) (bool, error) {
 	cache, err := s.GetCache(cacheId)
 	if err != nil {
 		return false, err
