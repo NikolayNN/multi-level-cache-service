@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"time"
 )
 
@@ -9,11 +10,11 @@ type cacheNameable interface {
 }
 
 type CacheService interface {
-	GetCache(cacheId cacheNameable) (cache Cache, ok bool)
-	GetCacheByName(cacheName string) (cache Cache, ok bool)
-	GetPrefix(cacheId cacheNameable) (prefix string, ok bool)
-	GetTtl(cacheId cacheNameable, level int) (ttl time.Duration, ok bool)
-	IsLevelEnabled(cacheId cacheNameable, level int) (enabled bool, ok bool)
+	GetCache(cacheId cacheNameable) (cache Cache, err error)
+	GetCacheByName(cacheName string) (cache Cache, err error)
+	GetPrefix(cacheId cacheNameable) (prefix string, err error)
+	GetTtl(cacheId cacheNameable, level int) (ttl time.Duration, err error)
+	IsLevelEnabled(cacheId cacheNameable, level int) (enabled bool, err error)
 }
 
 type CacheServiceImpl struct {
@@ -33,36 +34,56 @@ func NewCacheService(cfg *AppConfig) CacheService {
 	}
 }
 
-func (s *CacheServiceImpl) GetCache(cacheId cacheNameable) (Cache, bool) {
+func (s *CacheServiceImpl) GetCache(cacheId cacheNameable) (Cache, error) {
 	return s.GetCacheByName(cacheId.GetCacheName())
 }
 
-func (s *CacheServiceImpl) GetCacheByName(cacheName string) (Cache, bool) {
+func (s *CacheServiceImpl) GetCacheByName(cacheName string) (Cache, error) {
 	cache, ok := s.Caches[cacheName]
-	return cache, ok
-}
-
-func (s *CacheServiceImpl) GetPrefix(cacheId cacheNameable) (string, bool) {
-	cache, ok := s.GetCache(cacheId)
 	if !ok {
-		return "", ok
+		return Cache{}, fmt.Errorf("cache with name %q not found", cacheName)
 	}
-	return cache.Prefix, ok
+	return cache, nil
 }
 
-func (s *CacheServiceImpl) GetTtl(cacheId cacheNameable, level int) (time.Duration, bool) {
-	cache, ok := s.GetCache(cacheId)
-	if !ok || level < 0 || level >= len(cache.Layers) {
-		return 0, false
+func (s *CacheServiceImpl) GetPrefix(cacheId cacheNameable) (string, error) {
+	cache, err := s.GetCache(cacheId)
+	if err != nil {
+		return "", err
 	}
-
-	return cache.Layers[level].TTL, ok
+	return cache.Prefix, nil
 }
 
-func (s *CacheServiceImpl) IsLevelEnabled(cacheId cacheNameable, level int) (bool, bool) {
-	cache, ok := s.GetCache(cacheId)
-	if !ok || level < 0 || level >= len(cache.Layers) {
-		return false, false
+func (s *CacheServiceImpl) GetTtl(cacheId cacheNameable, level int) (time.Duration, error) {
+	cache, err := s.GetCache(cacheId)
+	if err != nil {
+		return 0, err
 	}
-	return cache.Layers[level].Enabled, ok
+
+	layer, err := s.getLevel(cache, level)
+	if err != nil {
+		return 0, err
+	}
+
+	return layer.TTL, nil
+}
+
+func (s *CacheServiceImpl) IsLevelEnabled(cacheId cacheNameable, level int) (bool, error) {
+	cache, err := s.GetCache(cacheId)
+	if err != nil {
+		return false, err
+	}
+
+	layer, err := s.getLevel(cache, level)
+	if err != nil {
+		return false, err
+	}
+	return layer.Enabled, nil
+}
+
+func (s *CacheServiceImpl) getLevel(cache Cache, level int) (CacheLayerConfig, error) {
+	if level < 0 || level >= len(cache.Layers) {
+		return CacheLayerConfig{}, fmt.Errorf("request wrong level %q for cacheName %d", cache.Name, level)
+	}
+	return cache.Layers[level], nil
 }
