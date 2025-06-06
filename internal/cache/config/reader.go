@@ -23,6 +23,10 @@ func loadAppConfig(path string) (*AppConfig, error) {
 		return nil, fmt.Errorf("yaml unmarshal error: %w", err)
 	}
 
+	if err := interm.Validate(); err != nil {
+		return nil, fmt.Errorf("config validate error: %w", err)
+	}
+
 	return &AppConfig{
 		Provider: interm.Providers,
 		Layers:   interm.Layers,
