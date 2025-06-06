@@ -2,6 +2,7 @@ package dto
 
 import (
 	"aur-cache-service/internal/cache/config"
+	"log"
 )
 
 type ResolverMapper struct {
@@ -15,41 +16,59 @@ func NewResolverMapper(cacheConfigService *config.CacheServiceImpl) *ResolverMap
 }
 
 func (s *ResolverMapper) MapAllResolvedCacheEntry(cacheEntries []*CacheEntry) []*ResolvedCacheEntry {
-	resolved := make([]*ResolvedCacheEntry, 0, len(cacheEntries))
-	for _, req := range cacheEntries {
-		cacheReq := s.mapResolvedCacheEntry(req)
-		resolved = append(resolved, cacheReq)
+	resolvedList := make([]*ResolvedCacheEntry, 0, len(cacheEntries))
+	for _, cacheEntry := range cacheEntries {
+		resolved, err := s.mapResolvedCacheEntry(cacheEntry)
+		if err != nil {
+			log.Printf("ERROR: while resolve cacheEntry: %+v, %v", cacheEntry, err)
+		} else {
+			resolvedList = append(resolvedList, resolved)
+		}
 	}
-	return resolved
+	return resolvedList
 }
 
-func (s *ResolverMapper) mapResolvedCacheEntry(cacheEntry *CacheEntry) *ResolvedCacheEntry {
-	resolvedCacheId := s.ьapResolvedCacheId(cacheEntry.CacheId)
+func (s *ResolverMapper) mapResolvedCacheEntry(cacheEntry *CacheEntry) (*ResolvedCacheEntry, error) {
+	resolvedCacheId, err := s.mapResolvedCacheId(cacheEntry.CacheId)
+	if err != nil {
+		return nil, err
+	}
 	return &ResolvedCacheEntry{
 		ResolvedCacheId: resolvedCacheId,
 		Value:           cacheEntry.Value,
-	}
+	}, nil
 }
 
 func (s *ResolverMapper) MapAllResolvedCacheId(cacheIds []*CacheId) []*ResolvedCacheId {
-	resolved := make([]*ResolvedCacheId, 0, len(cacheIds))
-	for _, req := range cacheIds {
-		cacheReq := s.ьapResolvedCacheId(req)
-		resolved = append(resolved, cacheReq)
+	resolvedList := make([]*ResolvedCacheId, 0, len(cacheIds))
+	for _, cacheId := range cacheIds {
+		resolved, err := s.mapResolvedCacheId(cacheId)
+		if err != nil {
+			log.Printf("ERROR: while resolve cacheId: %+v, %v", cacheId, err)
+		} else {
+			resolvedList = append(resolvedList, resolved)
+		}
 	}
-	return resolved
+	return resolvedList
 }
 
-func (s *ResolverMapper) ьapResolvedCacheId(cacheId *CacheId) *ResolvedCacheId {
+func (s *ResolverMapper) mapResolvedCacheId(cacheId *CacheId) (*ResolvedCacheId, error) {
+	storageKey, err := s.toStorageKey(cacheId)
+	if err != nil {
+		return nil, err
+	}
 	return &ResolvedCacheId{
 		CacheId:    cacheId,
-		StorageKey: s.toStorageKey(cacheId),
-	}
+		StorageKey: storageKey,
+	}, nil
 }
 
-func (s *ResolverMapper) toStorageKey(cacheId CacheIdRef) string {
-	prefix := s.cacheConfigService.GetPrefix(cacheId)
-	return prefix + StorageKeySeparator + cacheId.GetKey()
+func (s *ResolverMapper) toStorageKey(cacheId CacheIdRef) (string, error) {
+	prefix, err := s.cacheConfigService.GetPrefix(cacheId)
+	if err != nil {
+		return "", err
+	}
+	return prefix + StorageKeySeparator + cacheId.GetKey(), nil
 }
 
 func (s *ResolverMapper) MapAllCacheEntryHit(resolvedHits []*ResolvedCacheHit) []*CacheEntryHit {
