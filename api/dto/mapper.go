@@ -6,12 +6,12 @@ import (
 )
 
 type ResolverMapper struct {
-	cacheConfigService *config.CacheServiceImpl
+	cacheConfigService config.CacheService
 }
 
 const StorageKeySeparator = ":"
 
-func NewResolverMapper(cacheConfigService *config.CacheServiceImpl) *ResolverMapper {
+func NewResolverMapper(cacheConfigService config.CacheService) *ResolverMapper {
 	return &ResolverMapper{cacheConfigService: cacheConfigService}
 }
 
