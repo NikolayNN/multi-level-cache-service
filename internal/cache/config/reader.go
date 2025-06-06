@@ -12,7 +12,7 @@ type AppConfig struct {
 	Caches   []Cache
 }
 
-func loadAppConfig(path string) (*AppConfig, error) {
+func LoadAppConfig(path string) (*AppConfig, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("read error: %w", err)
