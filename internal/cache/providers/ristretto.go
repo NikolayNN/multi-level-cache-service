@@ -15,19 +15,10 @@ type Client struct {
 const contextCheckInterval = 100
 
 func NewRistretto(cfg config.Ristretto) (*Client, error) {
-
-	if cfg.NumCounters <= 0 {
-		return nil, fmt.Errorf("NumCounters должно быть положительным числом")
-	}
-	if cfg.MaxCostBytes() <= 0 {
-		return nil, fmt.Errorf("MaxCost должно быть положительным числом")
-	}
-	if cfg.BufferItems <= 0 {
-		return nil, fmt.Errorf("BufferItems должно быть положительным числом")
-	}
+	maxCostBytes, _ := cfg.MaxCostBytes()
 	cache, err := ristretto.NewCache(&ristretto.Config{
 		NumCounters: cfg.NumCounters,
-		MaxCost:     int64(cfg.MaxCostBytes()),
+		MaxCost:     int64(maxCostBytes),
 		BufferItems: cfg.BufferItems,
 	})
 	if err != nil {

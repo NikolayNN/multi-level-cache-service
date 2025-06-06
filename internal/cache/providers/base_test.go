@@ -33,7 +33,7 @@ func TestCalcChunkSize(t *testing.T) {
 func TestSplitKeysToChunks(t *testing.T) {
 	keys := make([]string, 25)
 	for i := range keys {
-		keys[i] = "key" + string('A'+i)
+		keys[i] = "key" + string(rune('A'+i))
 	}
 
 	chunks := splitKeysToChunks(keys, 3, 10)
@@ -49,7 +49,7 @@ func TestSplitKeysToChunks(t *testing.T) {
 func TestSplitKeyValueToChunks(t *testing.T) {
 	data := map[string]string{}
 	for i := 0; i < 25; i++ {
-		data[string('A'+i)] = string('a' + i)
+		data[string(rune('A'+i))] = string(rune('a' + i))
 	}
 
 	chunks := splitKeyValueToChunks(data, 3, 10)

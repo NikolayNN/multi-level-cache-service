@@ -88,7 +88,7 @@ func initProvider(p interface{}) (CacheProvider, error) {
 	case config.Redis:
 		return NewRedis(context.Background(), c)
 	case config.RocksDB:
-		return NewRocksDb(c)
+		return NewRocksDbCF(c)
 	default:
 		return nil, fmt.Errorf("unsupported provider type: %T", c)
 	}
@@ -146,12 +146,23 @@ func (s *ServiceImpl) PutAll(ctx context.Context, reqs []*dto.ResolvedCacheEntry
 	entries := make(map[string]string, len(reqs))
 	ttls := make(map[string]time.Duration, len(reqs))
 	for _, req := range reqs {
-		if !s.isEnabled(req) {
+		enabled, err := s.isEnabled(req)
+		if err != nil {
+			fmt.Printf("cannot check if level is enabled for key %q: %v", req.GetStorageKey(), err)
 			continue
 		}
+		ttl, err := s.getTtl(req)
+		if err != nil {
+			fmt.Printf("cannot get ttl for key %q: %v", req.GetStorageKey(), err)
+			continue
+		}
+		if !enabled {
+			continue
+		}
+
 		key := req.GetStorageKey()
 		entries[key] = marshalRawJSON(req.Value)
-		ttls[key] = s.getTtl(req)
+		ttls[key] = ttl
 	}
 	if len(entries) == 0 {
 		return
@@ -181,7 +192,14 @@ func (s *ServiceImpl) categorizeRequests(reqs []*dto.ResolvedCacheId) (keyToRequ
 	enabledKeys = make([]string, 0, len(reqs))
 	skipped = make([]*dto.ResolvedCacheId, 0, len(reqs))
 	for _, req := range reqs {
-		if s.isEnabled(req) {
+
+		enabled, err := s.isEnabled(req)
+		if err != nil {
+			fmt.Printf("cannot check if level is enabled for key %q: %v", req.GetStorageKey(), err)
+			continue
+		}
+
+		if enabled {
 			key := req.GetStorageKey()
 			keyToRequest[key] = req
 			enabledKeys = append(enabledKeys, key)
@@ -192,11 +210,11 @@ func (s *ServiceImpl) categorizeRequests(reqs []*dto.ResolvedCacheId) (keyToRequ
 	return
 }
 
-func (s *ServiceImpl) getTtl(cacheId dto.CacheIdRef) time.Duration {
+func (s *ServiceImpl) getTtl(cacheId dto.CacheIdRef) (time.Duration, error) {
 	return s.configService.GetTtl(cacheId, s.level)
 }
 
-func (s *ServiceImpl) isEnabled(cacheId dto.CacheIdRef) bool {
+func (s *ServiceImpl) isEnabled(cacheId dto.CacheIdRef) (bool, error) {
 	return s.configService.IsLevelEnabled(cacheId, s.level)
 }
 

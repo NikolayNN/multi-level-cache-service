@@ -1,6 +1,3 @@
-//go:build rocksdb
-// +build rocksdb
-
 // Package providers реализует провайдер кэша на базе RocksDB,
 // где информация о сроке жизни (TTL) хранится в отдельной Column Family
 // `ttl_cf`.  Такой подход даёт:
@@ -78,11 +75,13 @@ func NewRocksDbCF(cfg config.RocksDB) (*RocksDbCF, error) {
 	}
 
 	// Block‑cache tuning (optional)
-	if b := cfg.BlockCacheBytes(); b > 0 {
+	blockCacheBytes, _ := cfg.BlockCacheBytes()
+	blockSizeBytes, _ := cfg.BlockSizeBytes()
+	if blockCacheBytes > 0 {
 		bbto := grocksdb.NewDefaultBlockBasedTableOptions()
-		bbto.SetBlockCache(grocksdb.NewLRUCache(b))
-		if bs := cfg.BlockSizeBytes(); bs > 0 {
-			bbto.SetBlockSize(int(bs))
+		bbto.SetBlockCache(grocksdb.NewLRUCache(blockCacheBytes))
+		if blockSizeBytes > 0 {
+			bbto.SetBlockSize(int(blockSizeBytes))
 		}
 		dbOpts.SetBlockBasedTableFactory(bbto)
 	}
