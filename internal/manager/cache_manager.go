@@ -26,10 +26,10 @@ type Manager interface {
 	GetAll(ctx context.Context, ids []*dto.CacheId) []*dto.CacheEntryHit
 
 	// PutAll вставляет записи во все уровни кэша.
-	PutAll(entries []*dto.CacheEntry)
+	PutAll(ctx context.Context, entries []*dto.CacheEntry)
 
 	// EvictAll удаляет записи со всех уровней кэша.
-	EvictAll(ids []*dto.CacheId)
+	EvictAll(ctx context.Context, ids []*dto.CacheId)
 }
 
 type ManagerImpl struct {
