@@ -4,12 +4,15 @@ import (
 	"aur-cache-service/api/dto"
 	"context"
 	"log"
+	"time"
 )
 
-// AsyncManagerAdapter provides a simplified interface over Manager.
-// PutAll and EvictAll are executed asynchronously to reduce
-// blocking of the calling goroutine.
-type AsyncManagerAdapter interface {
+// Максимум 64 одновременных async-операций (PutAll/EvictAll).
+var tokens = make(chan struct{}, 64)
+
+// ManagerAdapter provides a simplified interface over Manager.
+// PutAll и EvictAll выполняются асинхронно, поэтому доступ лимитируем семафором.
+type ManagerAdapter interface {
 	Get(ctx context.Context, id *dto.CacheId) *dto.CacheEntryHit
 	Put(ctx context.Context, entry *dto.CacheEntry)
 	Evict(ctx context.Context, id *dto.CacheId)
@@ -19,68 +22,106 @@ type AsyncManagerAdapter interface {
 	EvictAll(ctx context.Context, ids []*dto.CacheId)
 }
 
-type asyncManagerAdapter struct {
-	manager Manager
+type AsyncManagerAdapter struct {
+	manager         Manager
+	putAllTimeout   time.Duration
+	evictAllTimeout time.Duration
 }
 
-// NewAsyncAdapter creates a new AsyncManagerAdapter for the provided Manager.
-func NewAsyncAdapter(m Manager) AsyncManagerAdapter {
-	return &asyncManagerAdapter{manager: m}
+const defaultTimeout = 5 * time.Second
+
+// NewAsyncManagerAdapter создаёт адаптер с явными или дефолтными тайм-аутами.
+func NewAsyncManagerAdapter(m Manager, putTO, evictTO time.Duration) *AsyncManagerAdapter {
+	if putTO <= 0 {
+		log.Printf("WARN: putAllTimeout ≤ 0 set  %s", defaultTimeout)
+		putTO = defaultTimeout
+	}
+	if evictTO <= 0 {
+		log.Printf("WARN: evictAllTimeout ≤ 0 set %s", defaultTimeout)
+		evictTO = defaultTimeout
+	}
+	return &AsyncManagerAdapter{
+		manager:         m,
+		putAllTimeout:   putTO,
+		evictAllTimeout: evictTO,
+	}
 }
 
-func (f *asyncManagerAdapter) Get(ctx context.Context, id *dto.CacheId) *dto.CacheEntryHit {
+/* ---------- синхронные обёртки ---------- */
+
+func (a *AsyncManagerAdapter) Get(ctx context.Context, id *dto.CacheId) *dto.CacheEntryHit {
 	if id == nil {
 		return nil
 	}
-	res := f.GetAll(ctx, []*dto.CacheId{id})
+	res := a.GetAll(ctx, []*dto.CacheId{id})
 	if len(res) == 0 {
 		return nil
 	}
 	return res[0]
 }
 
-func (f *asyncManagerAdapter) Put(ctx context.Context, entry *dto.CacheEntry) {
-	if entry == nil {
-		return
+func (a *AsyncManagerAdapter) Put(ctx context.Context, e *dto.CacheEntry) {
+	if e != nil {
+		a.PutAll(ctx, []*dto.CacheEntry{e})
 	}
-	f.PutAll(ctx, []*dto.CacheEntry{entry})
 }
 
-func (f *asyncManagerAdapter) Evict(ctx context.Context, id *dto.CacheId) {
-	if id == nil {
-		return
+func (a *AsyncManagerAdapter) Evict(ctx context.Context, id *dto.CacheId) {
+	if id != nil {
+		a.EvictAll(ctx, []*dto.CacheId{id})
 	}
-	f.EvictAll(ctx, []*dto.CacheId{id})
 }
 
-func (f *asyncManagerAdapter) GetAll(ctx context.Context, ids []*dto.CacheId) []*dto.CacheEntryHit {
-	return f.manager.GetAll(ctx, ids)
+func (a *AsyncManagerAdapter) GetAll(ctx context.Context, ids []*dto.CacheId) []*dto.CacheEntryHit {
+	return a.manager.GetAll(ctx, ids)
 }
 
-func (f *asyncManagerAdapter) PutAll(ctx context.Context, entries []*dto.CacheEntry) {
+/* ---------- ограниченный async-раннер ---------- */
+
+func (a *AsyncManagerAdapter) runAsync(f func(ctx context.Context), d time.Duration) {
+	/* забираем токен — если буфер полон, ждём */
+	tokens <- struct{}{}
+
+	go func() {
+		/* освобождаем токен при выходе */
+		defer func() { <-tokens }()
+
+		ctx, cancel := makeCtx(d)
+		defer cancel()
+
+		defer func() {
+			if r := recover(); r != nil {
+				log.Printf("async panic: %v", r)
+			}
+		}()
+
+		f(ctx)
+	}()
+}
+
+func makeCtx(d time.Duration) (context.Context, context.CancelFunc) {
+	if d <= 0 {
+		return context.Background(), func() {}
+	}
+	return context.WithTimeout(context.Background(), d)
+}
+
+/* ---------- асинхронные методы ---------- */
+
+func (a *AsyncManagerAdapter) PutAll(_ context.Context, entries []*dto.CacheEntry) {
 	if len(entries) == 0 {
 		return
 	}
-	go func() {
-		defer func() {
-			if r := recover(); r != nil {
-				log.Printf("panic in PutAll goroutine: %v", r)
-			}
-		}()
-		f.manager.PutAll(ctx, entries)
-	}()
+	a.runAsync(func(ctx context.Context) {
+		a.manager.PutAll(ctx, entries)
+	}, a.putAllTimeout)
 }
 
-func (f *asyncManagerAdapter) EvictAll(ctx context.Context, ids []*dto.CacheId) {
+func (a *AsyncManagerAdapter) EvictAll(_ context.Context, ids []*dto.CacheId) {
 	if len(ids) == 0 {
 		return
 	}
-	go func() {
-		defer func() {
-			if r := recover(); r != nil {
-				log.Printf("panic in EvictAll goroutine: %v", r)
-			}
-		}()
-		f.manager.EvictAll(ctx, ids)
-	}()
+	a.runAsync(func(ctx context.Context) {
+		a.manager.EvictAll(ctx, ids)
+	}, a.evictAllTimeout)
 }
