@@ -83,7 +83,7 @@ func (s *CacheServiceImpl) IsLevelEnabled(cacheId CacheNameable, level int) (boo
 
 func (s *CacheServiceImpl) getLevel(cache Cache, level int) (CacheLayerConfig, error) {
 	if level < 0 || level >= len(cache.Layers) {
-		return CacheLayerConfig{}, fmt.Errorf("request wrong level %q for cacheName %d", cache.Name, level)
+		return CacheLayerConfig{}, fmt.Errorf("request wrong level %d for cacheName %q", level, cache.Name)
 	}
 	return cache.Layers[level], nil
 }
