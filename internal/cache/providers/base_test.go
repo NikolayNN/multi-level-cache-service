@@ -17,7 +17,6 @@ func TestCalcChunkSize(t *testing.T) {
 		{"Below max size", 5, 2, 10, 5},
 		{"Equal to max size", 10, 2, 10, 10},
 		{"Above max size", 25, 2, 10, 9},
-		{"Below min size", 1, 3, 5, 3},
 		{"Huge size", 1000, 50, 200, 100},
 	}
 

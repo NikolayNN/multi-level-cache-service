@@ -49,7 +49,7 @@ func (m *mockManager) EvictAll(ctx context.Context, ids []*dto.CacheId) {
 
 func TestAsyncAdapter_GetWrapsManager(t *testing.T) {
 	mgr := &mockManager{}
-	f := NewAsyncAdapter(mgr)
+	f := NewAsyncManagerAdapter(mgr, 1*time.Second, 1*time.Second)
 	id := &dto.CacheId{CacheName: "c", Key: "k"}
 	res := f.Get(context.Background(), id)
 	assert.NotNil(t, res)
@@ -60,7 +60,7 @@ func TestAsyncAdapter_GetWrapsManager(t *testing.T) {
 func TestAsyncAdapter_PutAllAsync(t *testing.T) {
 	mgr := &mockManager{wait: 50 * time.Millisecond}
 	mgr.putWG.Add(1)
-	f := NewAsyncAdapter(mgr)
+	f := NewAsyncManagerAdapter(mgr, 1*time.Second, 1*time.Second)
 	entry := &dto.CacheEntry{CacheId: &dto.CacheId{CacheName: "c", Key: "k"}}
 
 	start := time.Now()
@@ -75,7 +75,7 @@ func TestAsyncAdapter_PutAllAsync(t *testing.T) {
 func TestAsyncAdapter_EvictAllAsync(t *testing.T) {
 	mgr := &mockManager{wait: 50 * time.Millisecond}
 	mgr.evictWG.Add(1)
-	f := NewAsyncAdapter(mgr)
+	f := NewAsyncManagerAdapter(mgr, 1*time.Second, 1*time.Second)
 	id := &dto.CacheId{CacheName: "c", Key: "k"}
 
 	start := time.Now()
@@ -91,7 +91,7 @@ func TestAsyncAdapter_SingleHelpers(t *testing.T) {
 	mgr := &mockManager{wait: 10 * time.Millisecond}
 	mgr.putWG.Add(1)
 	mgr.evictWG.Add(1)
-	f := NewAsyncAdapter(mgr)
+	f := NewAsyncManagerAdapter(mgr, 1*time.Second, 1*time.Second)
 
 	id := &dto.CacheId{CacheName: "c", Key: "k"}
 	entry := &dto.CacheEntry{CacheId: id}
