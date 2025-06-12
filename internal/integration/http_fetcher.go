@@ -43,7 +43,7 @@ type httpBatchFetcherImpl struct {
 	client *http.Client
 }
 
-func newHttpBatchFetcher(c *http.Client) *httpBatchFetcherImpl {
+func CreateHttpBatchFetcher(c *http.Client) *httpBatchFetcherImpl {
 	return &httpBatchFetcherImpl{client: c}
 }
 

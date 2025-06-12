@@ -35,7 +35,7 @@ type Manager interface {
 type ManagerImpl struct {
 	cacheController    cache.Controller
 	externalController integration.Controller
-	mapper             dto.ResolverMapper
+	mapper             *dto.ResolverMapper
 }
 
 func (m *ManagerImpl) GetAll(ctx context.Context, cacheIds []*dto.CacheId) []*dto.CacheEntryHit {
@@ -53,7 +53,7 @@ func (m *ManagerImpl) GetAll(ctx context.Context, cacheIds []*dto.CacheId) []*dt
 		return []*dto.CacheEntryHit{}
 	}
 
-	fromExternal := m.externalController.GetAll(getResults[len(getResults)-1].Misses)
+	fromExternal := m.externalController.GetAll(ctx, getResults[len(getResults)-1].Misses)
 	finalHits = append(finalHits, fromExternal.Hits...)
 
 	derivedCtx, cancel := context.WithTimeout(ctx, 1000*time.Millisecond)

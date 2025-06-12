@@ -8,14 +8,14 @@ type LayerProvider struct {
 }
 
 type LayerProviderService struct {
-	layerProviders []*LayerProvider
+	LayerProviders []*LayerProvider
 }
 
 func NewLayerProviderService(cfg *AppConfig) *LayerProviderService {
 	providersMap := providersToMap(cfg.Provider)
 	layerProviders := createLayerProviders(cfg.Layers, providersMap)
 	return &LayerProviderService{
-		layerProviders: layerProviders,
+		LayerProviders: layerProviders,
 	}
 }
 

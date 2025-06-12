@@ -6,7 +6,13 @@ import (
 )
 
 type Controller interface {
-	GetAll(reqs []*dto.ResolvedCacheId) *dto.GetResult
+	GetAll(ctx context.Context, reqs []*dto.ResolvedCacheId) *dto.GetResult
+}
+
+func CreateController(service Service) Controller {
+	return &ControllerImpl{
+		service: service,
+	}
 }
 
 type ControllerImpl struct {

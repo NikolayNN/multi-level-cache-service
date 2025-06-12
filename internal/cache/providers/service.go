@@ -82,13 +82,14 @@ func createService(providerConfig *config.LayerProvider, cacheServiceConfig conf
 }
 
 func initProvider(p interface{}) (CacheProvider, error) {
+	fmt.Printf("initProvider: received type = %T\n", p)
 	switch c := p.(type) {
-	case config.Ristretto:
-		return NewRistretto(c)
-	case config.Redis:
-		return NewRedis(context.Background(), c)
-	case config.RocksDB:
-		return NewRocksDbCF(c)
+	case *config.Ristretto:
+		return NewRistretto(*c)
+	case *config.Redis:
+		return NewRedis(context.Background(), *c)
+	case *config.RocksDB:
+		return NewRocksDbCF(*c)
 	default:
 		return nil, fmt.Errorf("unsupported provider type: %T", c)
 	}

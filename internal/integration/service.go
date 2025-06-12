@@ -32,6 +32,13 @@ type ServiceImpl struct {
 	configService config.CacheService
 }
 
+func NewIntegrationService(cacheService config.CacheService, batchFetcher httpBatchFetcher) Service {
+	return &ServiceImpl{
+		fetcher:       batchFetcher,
+		configService: cacheService,
+	}
+}
+
 const maxParallel = 8
 
 // GetAll запрашивает данные для всех ResolvedCacheId, параллельно обрабатывая группы

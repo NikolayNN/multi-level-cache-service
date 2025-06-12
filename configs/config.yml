@@ -29,7 +29,7 @@ providers:
     host: localhost
 
     # Порт Redis-сервера.
-    port: 6370
+    port: 6379
 
     # Пароль для подключения (если требуется).
     password: "12345"
@@ -50,7 +50,7 @@ providers:
     type: "rocksdb"
 
     # Путь к папке, где будут лежать SST-файлы RocksDB.
-    path: "/path"
+    path: "/home/wsl-user/rocksdb-db"
 
     # Создаёт базу, если путь не существует.
     createIfMissing: true
@@ -121,4 +121,3 @@ caches:
         headers:
           Authorization: "Bearer abc123"
           Content-Type: "application/json"
-
