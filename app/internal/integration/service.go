@@ -3,10 +3,12 @@ package integration
 import (
 	"aur-cache-service/api/dto"
 	"aur-cache-service/internal/cache/config"
+	"aur-cache-service/internal/metrics"
 	"context"
 	"encoding/json"
 	"log"
 	"sync"
+	"time"
 )
 
 // Service представляет интерфейс получения значений из внешнего API по списку идентификаторов кеша.
@@ -90,7 +92,9 @@ func (s *ServiceImpl) handleGroup(ctx context.Context, cacheName string, group [
 
 	keys := s.extractKeys(group)
 
+	start := time.Now()
 	respMap, err := s.fetcher.GetAll(ctx, keys, &cfg)
+	metrics.RecordExternalRequest(cacheName, err, time.Since(start).Seconds())
 	if err != nil {
 		log.Printf("fetch error for %s: %v", cacheName, err)
 		return &dto.GetResult{Skipped: group}

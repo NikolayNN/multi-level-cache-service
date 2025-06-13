@@ -2,6 +2,7 @@ package providers
 
 import (
 	"aur-cache-service/internal/cache/config"
+	"aur-cache-service/internal/metrics"
 	"context"
 	"fmt"
 	"github.com/dgraph-io/ristretto"
@@ -30,12 +31,18 @@ func NewRistretto(cfg config.Ristretto) (*Client, error) {
 	}, nil
 }
 
-func (c *Client) BatchGet(ctx context.Context, keys []string) (map[string]string, error) {
+func (c *Client) BatchGet(ctx context.Context, keys []string) (result map[string]string, err error) {
+	start := time.Now()
+	defer func() {
+		metrics.RecordProviderLatency("ristretto", "get", time.Since(start).Seconds())
+		metrics.RecordProviderOp("ristretto", "get", err)
+	}()
+
 	if len(keys) == 0 {
 		return make(map[string]string), nil
 	}
 
-	result := make(map[string]string, len(keys))
+	result = make(map[string]string, len(keys))
 	for i, key := range keys {
 
 		// Проверяем контекст каждые 100 итераций
@@ -57,7 +64,13 @@ func (c *Client) BatchGet(ctx context.Context, keys []string) (map[string]string
 	return result, nil
 }
 
-func (c *Client) BatchPut(ctx context.Context, items map[string]string, ttls map[string]time.Duration) error {
+func (c *Client) BatchPut(ctx context.Context, items map[string]string, ttls map[string]time.Duration) (err error) {
+	start := time.Now()
+	defer func() {
+		metrics.RecordProviderLatency("ristretto", "put", time.Since(start).Seconds())
+		metrics.RecordProviderOp("ristretto", "put", err)
+	}()
+
 	if len(items) == 0 {
 		return nil
 	}
@@ -85,7 +98,13 @@ func (c *Client) BatchPut(ctx context.Context, items map[string]string, ttls map
 	return nil
 }
 
-func (c *Client) BatchDelete(ctx context.Context, keys []string) error {
+func (c *Client) BatchDelete(ctx context.Context, keys []string) (err error) {
+	start := time.Now()
+	defer func() {
+		metrics.RecordProviderLatency("ristretto", "delete", time.Since(start).Seconds())
+		metrics.RecordProviderOp("ristretto", "delete", err)
+	}()
+
 	if len(keys) == 0 {
 		return nil
 	}
