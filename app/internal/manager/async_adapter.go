@@ -78,25 +78,27 @@ func (a *AsyncManagerAdapter) GetAll(ctx context.Context, ids []*dto.CacheId) []
 
 /* ---------- ограниченный async-раннер ---------- */
 
-func (a *AsyncManagerAdapter) runAsync(f func(ctx context.Context), d time.Duration) {
+func (a *AsyncManagerAdapter) runAsync(name string, f func(ctx context.Context), d time.Duration) {
 	/* забираем токен — если буфер полон, ждём */
 	tokens <- struct{}{}
 
 	go func() {
 		/* освобождаем токен при выходе */
-		defer func() { <-tokens }()
+                defer func() { <-tokens }()
 
 		ctx, cancel := makeCtx(d)
 		defer cancel()
 
-		defer func() {
-			if r := recover(); r != nil {
-				log.Printf("async panic: %v", r)
-			}
-		}()
+                defer func() {
+                        if r := recover(); r != nil {
+                                log.Printf("async panic: %v", r)
+                        }
+                }()
 
-		f(ctx)
-	}()
+                log.Printf("async %s started", name)
+                f(ctx)
+                log.Printf("async %s finished", name)
+        }()
 }
 
 func makeCtx(d time.Duration) (context.Context, context.CancelFunc) {
@@ -112,16 +114,16 @@ func (a *AsyncManagerAdapter) PutAll(_ context.Context, entries []*dto.CacheEntr
 	if len(entries) == 0 {
 		return
 	}
-	a.runAsync(func(ctx context.Context) {
-		a.manager.PutAll(ctx, entries)
-	}, a.putAllTimeout)
+        a.runAsync("putAll", func(ctx context.Context) {
+                a.manager.PutAll(ctx, entries)
+        }, a.putAllTimeout)
 }
 
 func (a *AsyncManagerAdapter) EvictAll(_ context.Context, ids []*dto.CacheId) {
 	if len(ids) == 0 {
 		return
 	}
-	a.runAsync(func(ctx context.Context) {
-		a.manager.EvictAll(ctx, ids)
-	}, a.evictAllTimeout)
+        a.runAsync("evictAll", func(ctx context.Context) {
+                a.manager.EvictAll(ctx, ids)
+        }, a.evictAllTimeout)
 }
