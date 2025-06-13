@@ -3,6 +3,7 @@ package httpserver
 import (
 	"aur-cache-service/api/dto"
 	"aur-cache-service/internal/manager"
+	"aur-cache-service/internal/metrics"
 	"compress/gzip"
 	"encoding/json"
 	"io"
@@ -13,6 +14,7 @@ import (
 	"sync"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 const (
@@ -36,6 +38,9 @@ func NewRouter(adapter manager.ManagerAdapter) http.Handler {
 	r.Use(limitBody(maxBodySize))
 	r.Use(decompressGzip)
 	r.Use(compressGzip(gzipThreshold))
+	r.Use(MetricsMiddleware)
+
+	r.Method(http.MethodGet, "/metrics", promhttp.Handler())
 
 	r.Post(batchGetPath, func(w http.ResponseWriter, r *http.Request) {
 		handleBatchGet(w, r, adapter)

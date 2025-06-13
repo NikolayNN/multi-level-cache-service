@@ -6,6 +6,7 @@ import (
 	"aur-cache-service/internal/httpserver"
 	"aur-cache-service/internal/integration"
 	"aur-cache-service/internal/manager"
+	"aur-cache-service/internal/metrics"
 	"fmt"
 	"log"
 	"net/http"
@@ -20,6 +21,8 @@ const (
 )
 
 func main() {
+
+	metrics.Register()
 
 	configCacheService := cache.CreateCacheService(configFilePath)
 

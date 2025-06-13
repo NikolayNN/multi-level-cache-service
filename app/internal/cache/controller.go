@@ -3,6 +3,7 @@ package cache
 import (
 	"aur-cache-service/api/dto"
 	"aur-cache-service/internal/cache/providers"
+	"aur-cache-service/internal/metrics"
 	"context"
 	"log"
 )
@@ -76,9 +77,11 @@ func (c *ControllerImpl) GetAll(ctx context.Context, reqs []*dto.ResolvedCacheId
 				Misses:  []*dto.ResolvedCacheId{},
 				Skipped: reqs,
 			}
+			metrics.RecordCacheLayer(i, 0, len(reqs))
 			continue
 		}
 		results[i] = r
+		metrics.RecordCacheLayer(i, len(r.Hits), len(r.Misses))
 		nextReqs := make([]*dto.ResolvedCacheId, 0, len(r.Misses)+len(r.Skipped))
 		nextReqs = append(nextReqs, r.Misses...)
 		nextReqs = append(nextReqs, r.Skipped...)
