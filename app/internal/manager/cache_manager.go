@@ -40,8 +40,10 @@ type ManagerImpl struct {
 
 func (m *ManagerImpl) GetAll(ctx context.Context, cacheIds []*dto.CacheId) []*dto.CacheEntryHit {
 
-	resolvedIds := m.mapper.MapAllResolvedCacheId(cacheIds)
-	getResults := m.cacheController.GetAll(ctx, resolvedIds)
+        log.Printf("manager GetAll %d ids", len(cacheIds))
+
+        resolvedIds := m.mapper.MapAllResolvedCacheId(cacheIds)
+        getResults := m.cacheController.GetAll(ctx, resolvedIds)
 
 	// collect
 	finalHits := make([]*dto.ResolvedCacheHit, 0, len(cacheIds))
@@ -53,13 +55,17 @@ func (m *ManagerImpl) GetAll(ctx context.Context, cacheIds []*dto.CacheId) []*dt
 		return []*dto.CacheEntryHit{}
 	}
 
-	fromExternal := m.externalController.GetAll(ctx, getResults[len(getResults)-1].Misses)
-	finalHits = append(finalHits, fromExternal.Hits...)
+        if len(getResults[len(getResults)-1].Misses) > 0 {
+                log.Printf("fetching %d ids from external source", len(getResults[len(getResults)-1].Misses))
+        }
+        fromExternal := m.externalController.GetAll(ctx, getResults[len(getResults)-1].Misses)
+        finalHits = append(finalHits, fromExternal.Hits...)
 
-	derivedCtx, cancel := context.WithTimeout(ctx, 1000*time.Millisecond)
-	defer cancel()
+        derivedCtx, cancel := context.WithTimeout(ctx, 1000*time.Millisecond)
+        defer cancel()
 
-	go m.fillMissingLevels(derivedCtx, finalHits, getResults)
+        log.Printf("start fillMissingLevels goroutine")
+        go m.fillMissingLevels(derivedCtx, finalHits, getResults)
 
 	return m.mapper.MapAllCacheEntryHit(finalHits)
 }

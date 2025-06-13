@@ -2,9 +2,11 @@ package providers
 
 import (
 	"aur-cache-service/internal/cache/config"
+	"aur-cache-service/internal/metrics"
 	"context"
 	"fmt"
 	"github.com/redis/go-redis/v9"
+	"log"
 	"time"
 )
 
@@ -28,10 +30,12 @@ func NewRedis(ctx context.Context, cfg config.Redis) (*Redis, error) {
 		WriteTimeout: cfg.Timeout,
 	})
 
-	// Проверка соединения
+	// Connection check
 	if err := rdb.Ping(ctx).Err(); err != nil {
 		return nil, fmt.Errorf("не удалось подключиться к Redis: %w", err)
 	}
+
+	log.Printf("connected to Redis %s:%d", cfg.Host, cfg.Port)
 
 	return &Redis{
 		rdb: rdb,
@@ -39,12 +43,18 @@ func NewRedis(ctx context.Context, cfg config.Redis) (*Redis, error) {
 }
 
 // BatchGet получает несколько значений за один запрос, разбивая их на chunk'и
-func (c *Redis) BatchGet(ctx context.Context, keys []string) (map[string]string, error) {
+func (c *Redis) BatchGet(ctx context.Context, keys []string) (result map[string]string, err error) {
+	start := time.Now()
+	defer func() {
+		metrics.RecordProviderLatency("redis", "get", time.Since(start).Seconds())
+		metrics.RecordProviderOp("redis", "get", err)
+	}()
+
 	if len(keys) == 0 {
 		return make(map[string]string), nil
 	}
 
-	result := make(map[string]string, len(keys))
+	result = make(map[string]string, len(keys))
 	chunks := splitKeysToChunks(keys, minChunk, maxChunk)
 
 	for _, chunk := range chunks {
@@ -62,12 +72,17 @@ func (c *Redis) BatchGet(ctx context.Context, keys []string) (map[string]string,
 			}
 		}
 	}
-
 	return result, nil
 }
 
 // BatchPut сохраняет несколько значений за один запрос, разбивая их на chunk'и
-func (c *Redis) BatchPut(ctx context.Context, items map[string]string, ttls map[string]time.Duration) error {
+func (c *Redis) BatchPut(ctx context.Context, items map[string]string, ttls map[string]time.Duration) (err error) {
+	start := time.Now()
+	defer func() {
+		metrics.RecordProviderLatency("redis", "put", time.Since(start).Seconds())
+		metrics.RecordProviderOp("redis", "put", err)
+	}()
+
 	if len(items) == 0 {
 		return nil
 	}
@@ -85,17 +100,23 @@ func (c *Redis) BatchPut(ctx context.Context, items map[string]string, ttls map[
 			pipe.Set(ctx, key, value, expiration)
 		}
 
-		_, err := pipe.Exec(ctx)
+		_, err = pipe.Exec(ctx)
 		if err != nil {
+			log.Printf("redis pipeline exec error on chunk %d: %v", chunkIndex, err)
 			return fmt.Errorf("ошибка пакетного сохранения в Redis (chunk %d): %w", chunkIndex, err)
 		}
 	}
-
 	return nil
 }
 
 // BatchDelete удаляет несколько значений за один запрос, разбивая их на chunk'и
-func (c *Redis) BatchDelete(ctx context.Context, keys []string) error {
+func (c *Redis) BatchDelete(ctx context.Context, keys []string) (err error) {
+	start := time.Now()
+	defer func() {
+		metrics.RecordProviderLatency("redis", "delete", time.Since(start).Seconds())
+		metrics.RecordProviderOp("redis", "delete", err)
+	}()
+
 	if len(keys) == 0 {
 		return nil
 	}
@@ -104,13 +125,13 @@ func (c *Redis) BatchDelete(ctx context.Context, keys []string) error {
 
 	// Обрабатываем каждый chunk отдельно
 	for chunkIndex, chunk := range chunks {
-		_, err := c.rdb.Unlink(ctx, chunk...).Result()
+		_, err = c.rdb.Unlink(ctx, chunk...).Result()
 		if err != nil {
+			log.Printf("redis unlink error on chunk %d of %d: %v", chunkIndex+1, len(chunks), err)
 			return fmt.Errorf("ошибка пакетного удаления из Redis (chunk %d/%d, keys: %d): %w",
 				chunkIndex+1, len(chunks), len(chunk), err)
 		}
 	}
-
 	return nil
 }
 

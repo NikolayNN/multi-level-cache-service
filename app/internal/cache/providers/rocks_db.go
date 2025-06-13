@@ -23,9 +23,11 @@ package providers
 
 import (
 	"aur-cache-service/internal/cache/config"
+	"aur-cache-service/internal/metrics"
 	"context"
 	"encoding/binary"
 	"fmt"
+	"log"
 	"strconv"
 	"sync"
 	"time"
@@ -186,11 +188,17 @@ func (c *RocksDbCF) expired(key string, now time.Time) bool {
 
 // ---------------- CacheProvider interface ----------------
 
-func (c *RocksDbCF) BatchGet(ctx context.Context, keys []string) (map[string]string, error) {
+func (c *RocksDbCF) BatchGet(ctx context.Context, keys []string) (result map[string]string, err error) {
+	start := time.Now()
+	defer func() {
+		metrics.RecordProviderLatency("rocksdb", "get", time.Since(start).Seconds())
+		metrics.RecordProviderOp("rocksdb", "get", err)
+	}()
+
 	if len(keys) == 0 {
 		return map[string]string{}, nil
 	}
-	result := make(map[string]string, len(keys))
+	result = make(map[string]string, len(keys))
 	now := time.Now()
 
 	expiredKeys := make([]string, 0)
@@ -224,7 +232,13 @@ func (c *RocksDbCF) BatchGet(ctx context.Context, keys []string) (map[string]str
 	return result, nil
 }
 
-func (c *RocksDbCF) BatchPut(ctx context.Context, items map[string]string, ttls map[string]time.Duration) error {
+func (c *RocksDbCF) BatchPut(ctx context.Context, items map[string]string, ttls map[string]time.Duration) (err error) {
+	start := time.Now()
+	defer func() {
+		metrics.RecordProviderLatency("rocksdb", "put", time.Since(start).Seconds())
+		metrics.RecordProviderOp("rocksdb", "put", err)
+	}()
+
 	if len(items) == 0 {
 		return nil
 	}
@@ -247,13 +261,19 @@ func (c *RocksDbCF) BatchPut(ctx context.Context, items map[string]string, ttls 
 			c.setTTL(batch, key, now.Add(ttl))
 		}
 	}
-	if err := c.db.Write(c.writeOpts, batch); err != nil {
+	if err = c.db.Write(c.writeOpts, batch); err != nil {
 		return fmt.Errorf("rocksdb batch put: %w", err)
 	}
 	return nil
 }
 
-func (c *RocksDbCF) BatchDelete(ctx context.Context, keys []string) error {
+func (c *RocksDbCF) BatchDelete(ctx context.Context, keys []string) (err error) {
+	start := time.Now()
+	defer func() {
+		metrics.RecordProviderLatency("rocksdb", "delete", time.Since(start).Seconds())
+		metrics.RecordProviderOp("rocksdb", "delete", err)
+	}()
+
 	if len(keys) == 0 {
 		return nil
 	}
@@ -271,7 +291,8 @@ func (c *RocksDbCF) BatchDelete(ctx context.Context, keys []string) error {
 		batch.DeleteCF(c.defaultCF, []byte(key))
 		c.deleteTTL(batch, key)
 	}
-	return c.db.Write(c.writeOpts, batch)
+	err = c.db.Write(c.writeOpts, batch)
+	return err
 }
 
 // ---------------- Background TTL collector ----------------
@@ -279,9 +300,11 @@ func (c *RocksDbCF) BatchDelete(ctx context.Context, keys []string) error {
 // StartTTLCollector launches a goroutine that every `interval` scans the ttl_cf
 // and hard‑deletes expired keys. Cancel the ctx to stop the cleaner.
 func (c *RocksDbCF) StartTTLCollector(ctx context.Context, interval time.Duration) {
+	log.Printf("rocksdb TTL collector started with interval %s", interval)
 	go func() {
 		ticker := time.NewTicker(interval)
 		defer ticker.Stop()
+		defer log.Printf("rocksdb TTL collector stopped")
 		for {
 			select {
 			case <-ctx.Done():
