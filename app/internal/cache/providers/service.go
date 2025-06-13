@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"time"
 )
 
@@ -82,7 +83,7 @@ func createService(providerConfig *config.LayerProvider, cacheServiceConfig conf
 }
 
 func initProvider(p interface{}) (CacheProvider, error) {
-	fmt.Printf("initProvider: received type = %T\n", p)
+	log.Printf("init provider: type %T", p)
 	switch c := p.(type) {
 	case *config.Ristretto:
 		return NewRistretto(*c)
@@ -149,12 +150,12 @@ func (s *ServiceImpl) PutAll(ctx context.Context, reqs []*dto.ResolvedCacheEntry
 	for _, req := range reqs {
 		enabled, err := s.isEnabled(req)
 		if err != nil {
-			fmt.Printf("cannot check if level is enabled for key %q: %v", req.GetStorageKey(), err)
+			log.Printf("cannot check if level is enabled for key %q: %v", req.GetStorageKey(), err)
 			continue
 		}
 		ttl, err := s.getTtl(req)
 		if err != nil {
-			fmt.Printf("cannot get ttl for key %q: %v", req.GetStorageKey(), err)
+			log.Printf("cannot get ttl for key %q: %v", req.GetStorageKey(), err)
 			continue
 		}
 		if !enabled {
@@ -196,7 +197,7 @@ func (s *ServiceImpl) categorizeRequests(reqs []*dto.ResolvedCacheId) (keyToRequ
 
 		enabled, err := s.isEnabled(req)
 		if err != nil {
-			fmt.Printf("cannot check if level is enabled for key %q: %v", req.GetStorageKey(), err)
+			log.Printf("cannot check if level is enabled for key %q: %v", req.GetStorageKey(), err)
 			continue
 		}
 
