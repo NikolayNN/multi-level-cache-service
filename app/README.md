@@ -148,9 +148,22 @@ go build ./cmd/server
 go test ./...
 ```
 
-Интеграционный тест для RocksDB помечен тегом `rocksdb` и требует установленную RocksDB:
+## Метрики
 
-```bash
-go test -tags=rocksdb ./...
+Сервис экспортирует метрики в формате Prometheus. После запуска приложения они
+доступны по HTTP на пути `/metrics` (по умолчанию порт `8080`). Достаточно
+перейти в браузере по ссылке:
+
 ```
+http://localhost:8080/metrics
+```
+
+Для сбора статистики можно настроить Prometheus, добавив в конфигурацию
+следующий scrape target:
+
+```yaml
+scrape_configs:
+  - job_name: cache-service
+    static_configs:
+      - targets: ['localhost:8080']
 
