@@ -1,8 +1,6 @@
 package cache
 
 import (
-	"aur-cache-service/api/dto"
-	"aur-cache-service/internal/cache/providers"
 	"context"
 	"log"
 )
