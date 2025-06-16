@@ -13,15 +13,6 @@ go build ./cmd/cli
 Примеры использования:
 
 ```bash
-# сохранить значение
-./cli -cache user put -key 42 -value '{"name":"Bob"}'
-
-# получить значение
-./cli -cache user get -key 42
-
-# удалить значение
-./cli -cache user evict -key 42
-
 # получить несколько значений
 ./cli -cache user get-all -key 1 -key 2
 
