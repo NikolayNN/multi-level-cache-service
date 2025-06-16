@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"go.uber.org/zap"
+	"telegram-alerts-go/alert"
 )
 
 // Service представляет интерфейс получения значений из внешнего API по списку идентификаторов кеша.
@@ -82,7 +83,7 @@ func (s *ServiceImpl) GetAll(ctx context.Context, reqs []*dto.ResolvedCacheId) *
 func (s *ServiceImpl) handleGroup(ctx context.Context, cacheName string, group []*dto.ResolvedCacheId) *dto.GetResult {
 	cache, err := s.configService.GetCacheByName(cacheName)
 	if err != nil {
-		zap.S().Errorw("unknown cache", "cache", cacheName, "error", err)
+		zap.S().Errorw(alert.Prefix("unknown cache"), "cache", cacheName, "error", err)
 		return &dto.GetResult{
 			Hits:    []*dto.ResolvedCacheHit{},
 			Misses:  []*dto.ResolvedCacheId{},
@@ -99,7 +100,7 @@ func (s *ServiceImpl) handleGroup(ctx context.Context, cacheName string, group [
 	respMap, err := s.fetcher.GetAll(ctx, keys, &cfg)
 	metrics.RecordExternalRequest(cacheName, err, time.Since(start).Seconds())
 	if err != nil {
-		zap.S().Errorw("fetch error", "cache", cacheName, "error", err)
+		zap.S().Errorw(alert.Prefix("fetch error"), "cache", cacheName, "error", err)
 		return &dto.GetResult{Skipped: group}
 	}
 

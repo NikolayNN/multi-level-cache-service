@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"go.uber.org/zap"
+	"telegram-alerts-go/alert"
 )
 
 type Redis struct {
@@ -103,7 +104,7 @@ func (c *Redis) BatchPut(ctx context.Context, items map[string]string, ttls map[
 
 		_, err = pipe.Exec(ctx)
 		if err != nil {
-			zap.S().Errorw("redis pipeline exec error", "chunk", chunkIndex, "error", err)
+			zap.S().Errorw(alert.Prefix("redis pipeline exec error"), "chunk", chunkIndex, "error", err)
 			return fmt.Errorf("ошибка пакетного сохранения в Redis (chunk %d): %w", chunkIndex, err)
 		}
 	}
@@ -128,7 +129,7 @@ func (c *Redis) BatchDelete(ctx context.Context, keys []string) (err error) {
 	for chunkIndex, chunk := range chunks {
 		_, err = c.rdb.Unlink(ctx, chunk...).Result()
 		if err != nil {
-			zap.S().Errorw("redis unlink error", "chunk", chunkIndex+1, "total", len(chunks), "error", err)
+			zap.S().Errorw(alert.Prefix("redis unlink error"), "chunk", chunkIndex+1, "total", len(chunks), "error", err)
 			return fmt.Errorf("ошибка пакетного удаления из Redis (chunk %d/%d, keys: %d): %w",
 				chunkIndex+1, len(chunks), len(chunk), err)
 		}

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"go.uber.org/zap"
+	"telegram-alerts-go/alert"
 )
 
 // Максимум 64 одновременных async-операций (PutAll/EvictAll).
@@ -92,7 +93,7 @@ func (a *AsyncManagerAdapter) runAsync(name string, f func(ctx context.Context),
 
 		defer func() {
 			if r := recover(); r != nil {
-				zap.S().Errorf("async panic: %v", r)
+				zap.S().Errorf(alert.Prefix("async panic: %v"), r)
 			}
 		}()
 

@@ -13,6 +13,8 @@ import (
 	"log"
 	"net/http"
 	"time"
+
+	"telegram-alerts-go/alert"
 )
 
 const (
@@ -50,6 +52,6 @@ func main() {
 
 	zap.S().Infow("starting server", "addr", srv.Addr)
 	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		zap.S().Fatalw("server error", "error", err)
+		zap.S().Fatalw(alert.Prefix("server error"), "error", err)
 	}
 }
