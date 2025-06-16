@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
-	"net/url"
 	"strings"
 	"sync"
 
@@ -19,17 +18,17 @@ import (
 )
 
 const (
-	maxBodySize           = 5 << 20                       // Максимальный размер тела запроса: 5 МБ (5 * 2^20 байт)
-	gzipThreshold         = 500                           // Минимальный размер ответа для сжатия gzip: 500 байт
-	baseAPIPath           = "/api/cache"                  // Базовый путь для всех API эндпоинтов
-	batchGetPath          = baseAPIPath + "/batch/get"    // POST /api/cache/batch/get - массовое получение
-	batchPutPath          = baseAPIPath + "/batch/put"    // POST /api/cache/batch/put - массовое сохранение
-	batchDeletePath       = baseAPIPath + "/batch/delete" // POST /api/cache/batch/delete - массовое удаление
-	contentTypeJSON       = "application/json"            // MIME-тип для JSON
-	headerContentEncoding = "Content-Encoding"            // HTTP заголовок для указания кодировки
-	headerAcceptEncoding  = "Accept-Encoding"             // HTTP заголовок с поддерживаемыми кодировками
-	headerVary            = "Vary"                        // HTTP заголовок для указания зависимости от других заголовков
-	encodingGzip          = "gzip"                        // Название gzip кодировки
+	maxBodySize           = 5 << 20                    // Максимальный размер тела запроса: 5 МБ (5 * 2^20 байт)
+	gzipThreshold         = 500                        // Минимальный размер ответа для сжатия gzip: 500 байт
+	baseAPIPath           = "/api/v1/cache"            // Базовый путь для всех API эндпоинтов
+	getAllPath            = baseAPIPath + "/get_all"   // POST /api/v1/cache/get_all - массовое получение
+	putAllPath            = baseAPIPath + "/put_all"   // POST /api/v1/cache/put_all - массовое сохранение
+	evictAllPath          = baseAPIPath + "/evict_all" // POST /api/v1/cache/evict_all - массовое удаление
+	contentTypeJSON       = "application/json"         // MIME-тип для JSON
+	headerContentEncoding = "Content-Encoding"         // HTTP заголовок для указания кодировки
+	headerAcceptEncoding  = "Accept-Encoding"          // HTTP заголовок с поддерживаемыми кодировками
+	headerVary            = "Vary"                     // HTTP заголовок для указания зависимости от других заголовков
+	encodingGzip          = "gzip"                     // Название gzip кодировки
 )
 
 // NewRouter возвращает http.Handler с зарегистрированными эндпоинтами.
@@ -43,87 +42,20 @@ func NewRouter(adapter manager.ManagerAdapter) http.Handler {
 
 	r.Method(http.MethodGet, "/metrics", promhttp.Handler())
 
-	r.Post(batchGetPath, func(w http.ResponseWriter, r *http.Request) {
+	r.Post(getAllPath, func(w http.ResponseWriter, r *http.Request) {
 		handleBatchGet(w, r, adapter)
 	})
-	r.Post(batchPutPath, func(w http.ResponseWriter, r *http.Request) {
+	r.Post(putAllPath, func(w http.ResponseWriter, r *http.Request) {
 		handleBatchPut(w, r, adapter)
 	})
-	r.Post(batchDeletePath, func(w http.ResponseWriter, r *http.Request) {
+	r.Post(evictAllPath, func(w http.ResponseWriter, r *http.Request) {
 		handleBatchDelete(w, r, adapter)
 	})
 
-	r.Route(baseAPIPath, func(r chi.Router) {
-		r.MethodFunc(http.MethodGet, "/*", func(w http.ResponseWriter, r *http.Request) {
-			handleSingle(w, r, adapter)
-		})
-		r.MethodFunc(http.MethodPut, "/*", func(w http.ResponseWriter, r *http.Request) {
-			handleSingle(w, r, adapter)
-		})
-		r.MethodFunc(http.MethodDelete, "/*", func(w http.ResponseWriter, r *http.Request) {
-			handleSingle(w, r, adapter)
-		})
-	})
+	// ранее здесь регистрировались одиночные операции GET, PUT и DELETE.
+	// Они убраны, чтобы оставались только batch эндпоинты.
 
 	return r
-}
-
-func parsePath(path string) (cacheName, key string, ok bool) {
-	// expected path: /api/cache/{cache}/{key...}
-	trimmed := strings.TrimPrefix(path, baseAPIPath+"/")
-	parts := strings.SplitN(trimmed, "/", 2)
-	if len(parts) != 2 {
-		return "", "", false
-	}
-	cacheName, err1 := url.PathUnescape(parts[0])
-	key, err2 := url.PathUnescape(parts[1])
-	if err1 != nil || err2 != nil {
-		return "", "", false
-	}
-	return cacheName, key, true
-}
-
-func handleSingle(w http.ResponseWriter, r *http.Request, adapter manager.ManagerAdapter) {
-	cacheName, key, ok := parsePath(r.URL.Path)
-	if !ok {
-		http.NotFound(w, r)
-		return
-	}
-	id := &dto.CacheId{CacheName: cacheName, Key: key}
-
-	switch r.Method {
-	case http.MethodGet:
-		hit := adapter.Get(r.Context(), id)
-		if hit == nil {
-			http.NotFound(w, r)
-			return
-		}
-		w.Header().Set("Content-Type", contentTypeJSON)
-		if err := json.NewEncoder(w).Encode(hit); err != nil {
-			zap.S().Errorw(alert.Prefix("encode error"), "error", err)
-		}
-
-	case http.MethodPut:
-		defer r.Body.Close()
-		if !strings.HasPrefix(r.Header.Get("Content-Type"), contentTypeJSON) {
-			http.Error(w, "unsupported content type", http.StatusUnsupportedMediaType)
-			return
-		}
-		var raw json.RawMessage
-		if err := json.NewDecoder(r.Body).Decode(&raw); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-		adapter.Put(r.Context(), &dto.CacheEntry{CacheId: id, Value: &raw})
-		w.WriteHeader(http.StatusOK)
-
-	case http.MethodDelete:
-		adapter.Evict(r.Context(), id)
-		w.WriteHeader(http.StatusOK)
-
-	default:
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-	}
 }
 
 type batchRequest struct {

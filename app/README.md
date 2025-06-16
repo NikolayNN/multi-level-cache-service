@@ -50,29 +50,13 @@ Multi-Level Cache Service - это экспериментальное прило
 ## REST API
 Ниже приведены основные эндпоинты сервиса.
 
-### Получение значения
-```
-GET /api/cache/{cacheName}/{key}
-```
-Возвращает значение из кэша или `404`, если оно отсутствует.
 
-### Сохранение значения
-```
-PUT /api/cache/{cacheName}/{key}
-```
-В теле запроса передаётся JSON со значением. Данные записываются во все уровни кэша.
-
-### Удаление значения
-```
-DELETE /api/cache/{cacheName}/{key}
-```
-Удаляет данные из всех уровней.
 
 ### Пакетные запросы
 ```
-POST /api/cache/batch/get
-POST /api/cache/batch/put
-POST /api/cache/batch/delete
+POST /api/v1/cache/get_all
+POST /api/v1/cache/put_all
+POST /api/v1/cache/evict_all
 ```
 Формат тела запроса содержит массив объектов с полями `c` (cacheName) и `k` (key). Для PUT также передаётся `v` (value).
 

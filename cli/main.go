@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -56,12 +55,6 @@ func main() {
 	args := flag.Args()[1:]
 
 	switch cmd {
-	case "get":
-		cmdGet(client, base, *cache, args)
-	case "put":
-		cmdPut(client, base, *cache, args)
-	case "evict":
-		cmdEvict(client, base, *cache, args)
 	case "get-all":
 		cmdGetAll(client, base, *cache, args)
 	case "put-all":
@@ -77,93 +70,7 @@ func main() {
 
 func usage() {
 	fmt.Fprintln(os.Stderr, "usage: cli -cache <name> [global options] <command> [options]")
-	fmt.Fprintln(os.Stderr, "commands: get, put, evict, get-all, put-all, evict-all")
-}
-
-func cmdGet(client *http.Client, base, cache string, args []string) {
-	fs := flag.NewFlagSet("get", flag.ExitOnError)
-	key := fs.String("key", "", "key")
-	fs.Parse(args)
-	if *key == "" {
-		fs.Usage()
-		os.Exit(1)
-	}
-
-	u := fmt.Sprintf("%s/api/cache/%s/%s", base, url.PathEscape(cache), url.PathEscape(*key))
-	resp, err := client.Get(u)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		io.Copy(io.Discard, resp.Body)
-		fmt.Fprintln(os.Stderr, resp.Status)
-		os.Exit(1)
-	}
-	io.Copy(os.Stdout, resp.Body)
-}
-
-func cmdPut(client *http.Client, base, cache string, args []string) {
-	fs := flag.NewFlagSet("put", flag.ExitOnError)
-	key := fs.String("key", "", "key")
-	value := fs.String("value", "", "json value")
-	fs.Parse(args)
-	if *key == "" || *value == "" {
-		fs.Usage()
-		os.Exit(1)
-	}
-
-	var raw json.RawMessage
-	if err := json.Unmarshal([]byte(*value), &raw); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-
-	u := fmt.Sprintf("%s/api/cache/%s/%s", base, url.PathEscape(cache), url.PathEscape(*key))
-	req, err := http.NewRequest(http.MethodPut, u, bytes.NewReader([]byte(*value)))
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := client.Do(req)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		fmt.Fprintln(os.Stderr, resp.Status)
-		os.Exit(1)
-	}
-}
-
-func cmdEvict(client *http.Client, base, cache string, args []string) {
-	fs := flag.NewFlagSet("evict", flag.ExitOnError)
-	key := fs.String("key", "", "key")
-	fs.Parse(args)
-	if *key == "" {
-		fs.Usage()
-		os.Exit(1)
-	}
-
-	u := fmt.Sprintf("%s/api/cache/%s/%s", base, url.PathEscape(cache), url.PathEscape(*key))
-	req, err := http.NewRequest(http.MethodDelete, u, nil)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	resp, err := client.Do(req)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		fmt.Fprintln(os.Stderr, resp.Status)
-		os.Exit(1)
-	}
+	fmt.Fprintln(os.Stderr, "commands: get-all, put-all, evict-all")
 }
 
 func cmdGetAll(client *http.Client, base, cache string, args []string) {
@@ -182,7 +89,7 @@ func cmdGetAll(client *http.Client, base, cache string, args []string) {
 	}
 	body, _ := json.Marshal(map[string]interface{}{"requests": ids})
 
-	u := fmt.Sprintf("%s/api/cache/batch/get", base)
+	u := fmt.Sprintf("%s/api/v1/cache/get_all", base)
 	req, err := http.NewRequest(http.MethodPost, u, bytes.NewReader(body))
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -229,7 +136,7 @@ func cmdPutAll(client *http.Client, base, cache string, args []string) {
 	}
 	body, _ := json.Marshal(map[string]interface{}{"requests": reqEntries})
 
-	u := fmt.Sprintf("%s/api/cache/batch/put", base)
+	u := fmt.Sprintf("%s/api/v1/cache/put_all", base)
 	req, err := http.NewRequest(http.MethodPost, u, bytes.NewReader(body))
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -264,7 +171,7 @@ func cmdEvictAll(client *http.Client, base, cache string, args []string) {
 	}
 	body, _ := json.Marshal(map[string]interface{}{"requests": ids})
 
-	u := fmt.Sprintf("%s/api/cache/batch/delete", base)
+	u := fmt.Sprintf("%s/api/v1/cache/evict_all", base)
 	req, err := http.NewRequest(http.MethodPost, u, bytes.NewReader(body))
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
