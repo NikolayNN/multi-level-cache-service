@@ -5,9 +5,11 @@ import (
 	"aur-cache-service/internal/cache"
 	"aur-cache-service/internal/httpserver"
 	"aur-cache-service/internal/integration"
+	"aur-cache-service/internal/logger"
 	"aur-cache-service/internal/manager"
 	"aur-cache-service/internal/metrics"
 	"fmt"
+	"go.uber.org/zap"
 	"log"
 	"net/http"
 	"time"
@@ -21,6 +23,11 @@ const (
 )
 
 func main() {
+
+	if _, err := logger.Init(); err != nil {
+		log.Fatalf("logger init failed: %v", err)
+	}
+	defer logger.Sync()
 
 	metrics.Register()
 
@@ -41,8 +48,8 @@ func main() {
 		Handler: router,
 	}
 
-	log.Printf("starting server on %s", srv.Addr)
+	zap.S().Infow("starting server", "addr", srv.Addr)
 	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		log.Fatalf("server error: %v", err)
+		zap.S().Fatalw("server error", "error", err)
 	}
 }

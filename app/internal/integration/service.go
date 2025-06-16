@@ -6,9 +6,10 @@ import (
 	"aur-cache-service/internal/metrics"
 	"context"
 	"encoding/json"
-	"log"
 	"sync"
 	"time"
+
+	"go.uber.org/zap"
 )
 
 // Service представляет интерфейс получения значений из внешнего API по списку идентификаторов кеша.
@@ -79,31 +80,30 @@ func (s *ServiceImpl) GetAll(ctx context.Context, reqs []*dto.ResolvedCacheId) *
 
 // обрабатывает одну группу ключей одного кэша
 func (s *ServiceImpl) handleGroup(ctx context.Context, cacheName string, group []*dto.ResolvedCacheId) *dto.GetResult {
-        cache, err := s.configService.GetCacheByName(cacheName)
-        if err != nil {
-                log.Printf("unknown cache %s: %v", cacheName, err)
-                return &dto.GetResult{
-                        Hits:    []*dto.ResolvedCacheHit{},
-                        Misses:  []*dto.ResolvedCacheId{},
-                        Skipped: group,
-                }
-        }
+	cache, err := s.configService.GetCacheByName(cacheName)
+	if err != nil {
+		zap.S().Errorw("unknown cache", "cache", cacheName, "error", err)
+		return &dto.GetResult{
+			Hits:    []*dto.ResolvedCacheHit{},
+			Misses:  []*dto.ResolvedCacheId{},
+			Skipped: group,
+		}
+	}
 
 	cfg := cache.Api.GetBatch
 
 	keys := s.extractKeys(group)
 
+	start := time.Now()
+	zap.S().Infow("fetching keys from external cache", "count", len(keys), "cache", cacheName)
+	respMap, err := s.fetcher.GetAll(ctx, keys, &cfg)
+	metrics.RecordExternalRequest(cacheName, err, time.Since(start).Seconds())
+	if err != nil {
+		zap.S().Errorw("fetch error", "cache", cacheName, "error", err)
+		return &dto.GetResult{Skipped: group}
+	}
 
-        start := time.Now()
-        log.Printf("fetching %d keys from external cache %s", len(keys), cacheName)
-        respMap, err := s.fetcher.GetAll(ctx, keys, &cfg)
-        metrics.RecordExternalRequest(cacheName, err, time.Since(start).Seconds())
-        if err != nil {
-                log.Printf("fetch error for %s: %v", cacheName, err)
-                return &dto.GetResult{Skipped: group}
-        }
-
-        log.Printf("fetched %d items for %s", len(respMap), cacheName)
+	zap.S().Infow("fetched items", "count", len(respMap), "cache", cacheName)
 
 	return s.classify(group, respMap)
 }

@@ -3,8 +3,9 @@ package manager
 import (
 	"aur-cache-service/api/dto"
 	"context"
-	"log"
 	"time"
+
+	"go.uber.org/zap"
 )
 
 // Максимум 64 одновременных async-операций (PutAll/EvictAll).
@@ -33,11 +34,11 @@ const defaultTimeout = 5 * time.Second
 // NewAsyncManagerAdapter создаёт адаптер с явными или дефолтными тайм-аутами.
 func NewAsyncManagerAdapter(m Manager, putTO, evictTO time.Duration) *AsyncManagerAdapter {
 	if putTO <= 0 {
-		log.Printf("WARN: putAllTimeout ≤ 0 set  %s", defaultTimeout)
+		zap.S().Warnf("putAllTimeout ≤ 0 set %s", defaultTimeout)
 		putTO = defaultTimeout
 	}
 	if evictTO <= 0 {
-		log.Printf("WARN: evictAllTimeout ≤ 0 set %s", defaultTimeout)
+		zap.S().Warnf("evictAllTimeout ≤ 0 set %s", defaultTimeout)
 		evictTO = defaultTimeout
 	}
 	return &AsyncManagerAdapter{
@@ -84,21 +85,21 @@ func (a *AsyncManagerAdapter) runAsync(name string, f func(ctx context.Context),
 
 	go func() {
 		/* освобождаем токен при выходе */
-                defer func() { <-tokens }()
+		defer func() { <-tokens }()
 
 		ctx, cancel := makeCtx(d)
 		defer cancel()
 
-                defer func() {
-                        if r := recover(); r != nil {
-                                log.Printf("async panic: %v", r)
-                        }
-                }()
+		defer func() {
+			if r := recover(); r != nil {
+				zap.S().Errorf("async panic: %v", r)
+			}
+		}()
 
-                log.Printf("async %s started", name)
-                f(ctx)
-                log.Printf("async %s finished", name)
-        }()
+		zap.S().Infow("async started", "name", name)
+		f(ctx)
+		zap.S().Infow("async finished", "name", name)
+	}()
 }
 
 func makeCtx(d time.Duration) (context.Context, context.CancelFunc) {
@@ -114,16 +115,16 @@ func (a *AsyncManagerAdapter) PutAll(_ context.Context, entries []*dto.CacheEntr
 	if len(entries) == 0 {
 		return
 	}
-        a.runAsync("putAll", func(ctx context.Context) {
-                a.manager.PutAll(ctx, entries)
-        }, a.putAllTimeout)
+	a.runAsync("putAll", func(ctx context.Context) {
+		a.manager.PutAll(ctx, entries)
+	}, a.putAllTimeout)
 }
 
 func (a *AsyncManagerAdapter) EvictAll(_ context.Context, ids []*dto.CacheId) {
 	if len(ids) == 0 {
 		return
 	}
-        a.runAsync("evictAll", func(ctx context.Context) {
-                a.manager.EvictAll(ctx, ids)
-        }, a.evictAllTimeout)
+	a.runAsync("evictAll", func(ctx context.Context) {
+		a.manager.EvictAll(ctx, ids)
+	}, a.evictAllTimeout)
 }

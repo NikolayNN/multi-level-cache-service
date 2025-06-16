@@ -5,8 +5,9 @@ import (
 	"aur-cache-service/internal/cache"
 	"aur-cache-service/internal/integration"
 	"context"
-	"log"
 	"time"
+
+	"go.uber.org/zap"
 )
 
 // Manager определяет высокоуровневый интерфейс управления данными в многослойном кэше.
@@ -40,10 +41,10 @@ type ManagerImpl struct {
 
 func (m *ManagerImpl) GetAll(ctx context.Context, cacheIds []*dto.CacheId) []*dto.CacheEntryHit {
 
-        log.Printf("manager GetAll %d ids", len(cacheIds))
+	zap.S().Infow("manager GetAll", "count", len(cacheIds))
 
-        resolvedIds := m.mapper.MapAllResolvedCacheId(cacheIds)
-        getResults := m.cacheController.GetAll(ctx, resolvedIds)
+	resolvedIds := m.mapper.MapAllResolvedCacheId(cacheIds)
+	getResults := m.cacheController.GetAll(ctx, resolvedIds)
 
 	// collect
 	finalHits := make([]*dto.ResolvedCacheHit, 0, len(cacheIds))
@@ -55,17 +56,17 @@ func (m *ManagerImpl) GetAll(ctx context.Context, cacheIds []*dto.CacheId) []*dt
 		return []*dto.CacheEntryHit{}
 	}
 
-        if len(getResults[len(getResults)-1].Misses) > 0 {
-                log.Printf("fetching %d ids from external source", len(getResults[len(getResults)-1].Misses))
-        }
-        fromExternal := m.externalController.GetAll(ctx, getResults[len(getResults)-1].Misses)
-        finalHits = append(finalHits, fromExternal.Hits...)
+	if len(getResults[len(getResults)-1].Misses) > 0 {
+		zap.S().Infow("fetching from external source", "count", len(getResults[len(getResults)-1].Misses))
+	}
+	fromExternal := m.externalController.GetAll(ctx, getResults[len(getResults)-1].Misses)
+	finalHits = append(finalHits, fromExternal.Hits...)
 
-        derivedCtx, cancel := context.WithTimeout(ctx, 1000*time.Millisecond)
-        defer cancel()
+	derivedCtx, cancel := context.WithTimeout(ctx, 1000*time.Millisecond)
+	defer cancel()
 
-        log.Printf("start fillMissingLevels goroutine")
-        go m.fillMissingLevels(derivedCtx, finalHits, getResults)
+	zap.S().Infow("start fillMissingLevels goroutine")
+	go m.fillMissingLevels(derivedCtx, finalHits, getResults)
 
 	return m.mapper.MapAllCacheEntryHit(finalHits)
 }
@@ -74,7 +75,7 @@ func (m *ManagerImpl) fillMissingLevels(ctx context.Context, finalHits []*dto.Re
 
 	defer func() {
 		if r := recover(); r != nil {
-			log.Printf("panic in goroutine fillMissingLevels: %v", r)
+			zap.S().Errorf("panic in goroutine fillMissingLevels: %v", r)
 		}
 	}()
 
