@@ -5,12 +5,13 @@ import (
 	"aur-cache-service/internal/cache/providers"
 
 	"go.uber.org/zap"
+	"telegram-alerts-go/alert"
 )
 
 func CreateCacheService(configFilePath string) config.CacheService {
 	appConfig, err := config.LoadAppConfig(configFilePath)
 	if err != nil {
-		zap.S().Errorw("error reading config file", "error", err)
+		zap.S().Errorw(alert.Prefix("error reading config file"), "error", err)
 	}
 	return config.NewCacheService(appConfig)
 }
@@ -19,14 +20,14 @@ func CreateLayersCacheController(configFilePath string, configCacheService confi
 
 	appConfig, err := config.LoadAppConfig(configFilePath)
 	if err != nil {
-		zap.S().Errorw("error reading config file", "error", err)
+		zap.S().Errorw(alert.Prefix("error reading config file"), "error", err)
 	}
 
 	providerService := config.NewLayerProviderService(appConfig)
 
 	clientServices, err := providers.CreateNewServiceList(providerService.LayerProviders, configCacheService)
 	if err != nil {
-		zap.S().Errorw("error creating service list", "error", err)
+		zap.S().Errorw(alert.Prefix("error creating service list"), "error", err)
 	}
 
 	return CreateControllerImpl(clientServices)

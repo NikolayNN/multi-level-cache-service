@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"go.uber.org/zap"
+	"telegram-alerts-go/alert"
 )
 
 // Manager определяет высокоуровневый интерфейс управления данными в многослойном кэше.
@@ -75,7 +76,7 @@ func (m *ManagerImpl) fillMissingLevels(ctx context.Context, finalHits []*dto.Re
 
 	defer func() {
 		if r := recover(); r != nil {
-			zap.S().Errorf("panic in goroutine fillMissingLevels: %v", r)
+			zap.S().Errorf(alert.Prefix("panic in goroutine fillMissingLevels: %v"), r)
 		}
 	}()
 

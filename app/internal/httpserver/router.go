@@ -12,6 +12,7 @@ import (
 	"sync"
 
 	"go.uber.org/zap"
+	"telegram-alerts-go/alert"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -99,7 +100,7 @@ func handleSingle(w http.ResponseWriter, r *http.Request, adapter manager.Manage
 		}
 		w.Header().Set("Content-Type", contentTypeJSON)
 		if err := json.NewEncoder(w).Encode(hit); err != nil {
-			zap.S().Errorw("encode error", "error", err)
+			zap.S().Errorw(alert.Prefix("encode error"), "error", err)
 		}
 
 	case http.MethodPut:
@@ -184,7 +185,7 @@ func handleBatchGet(w http.ResponseWriter, r *http.Request, adapter manager.Mana
 
 	w.Header().Set("Content-Type", contentTypeJSON)
 	if err := json.NewEncoder(w).Encode(map[string]interface{}{"results": results}); err != nil {
-		zap.S().Errorw("encode error", "error", err)
+		zap.S().Errorw(alert.Prefix("encode error"), "error", err)
 	}
 }
 
@@ -307,7 +308,7 @@ func compressGzip(threshold int) func(http.Handler) http.Handler {
 			w.WriteHeader(brw.code)
 			gz := gzip.NewWriter(w)
 			if _, err := gz.Write([]byte(data)); err != nil {
-				zap.S().Errorw("gzip write error", "error", err)
+				zap.S().Errorw(alert.Prefix("gzip write error"), "error", err)
 			}
 			gz.Close()
 		})
