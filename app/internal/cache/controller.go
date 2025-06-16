@@ -5,7 +5,8 @@ import (
 	"aur-cache-service/internal/cache/providers"
 	"aur-cache-service/internal/metrics"
 	"context"
-	"log"
+
+	"go.uber.org/zap"
 )
 
 // Controller определяет высокоуровневый интерфейс для работы с многослойным кэшем.
@@ -71,7 +72,7 @@ func (c *ControllerImpl) GetAll(ctx context.Context, reqs []*dto.ResolvedCacheId
 	for i, service := range c.services {
 		r, err := service.GetAll(ctx, reqs)
 		if err != nil {
-			log.Printf("Layer %d unavailable: %v", i, err)
+			zap.S().Warnw("layer unavailable", "layer", i, "error", err)
 			results[i] = &dto.GetResult{
 				Hits:    []*dto.ResolvedCacheHit{},
 				Misses:  []*dto.ResolvedCacheId{},
@@ -98,7 +99,7 @@ func (c *ControllerImpl) PutAll(ctx context.Context, entries []*dto.ResolvedCach
 		}
 		err := service.PutAll(ctx, entries)
 		if err != nil {
-			log.Printf("Layer %d unavailable: %v", i, err)
+			zap.S().Warnw("layer unavailable", "layer", i, "error", err)
 		}
 	}
 }
@@ -113,7 +114,7 @@ func (c *ControllerImpl) DeleteAll(ctx context.Context, reqs []*dto.ResolvedCach
 	for i, service := range c.services {
 		err := service.DeleteAll(ctx, reqs)
 		if err != nil {
-			log.Printf("Layer %d unavailable: %v", i, err)
+			zap.S().Warnw("layer unavailable", "layer", i, "error", err)
 		}
 	}
 }

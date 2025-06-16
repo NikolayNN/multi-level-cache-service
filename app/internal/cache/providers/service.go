@@ -7,8 +7,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"time"
+
+	"go.uber.org/zap"
 )
 
 // Service обеспечивает доступ к конкретному уровню кэширования.
@@ -83,7 +84,7 @@ func createService(providerConfig *config.LayerProvider, cacheServiceConfig conf
 }
 
 func initProvider(p interface{}) (CacheProvider, error) {
-	log.Printf("init provider: type %T", p)
+	zap.S().Infow("init provider", "type", fmt.Sprintf("%T", p))
 	switch c := p.(type) {
 	case *config.Ristretto:
 		return NewRistretto(*c)
@@ -150,12 +151,12 @@ func (s *ServiceImpl) PutAll(ctx context.Context, reqs []*dto.ResolvedCacheEntry
 	for _, req := range reqs {
 		enabled, err := s.isEnabled(req)
 		if err != nil {
-			log.Printf("cannot check if level is enabled for key %q: %v", req.GetStorageKey(), err)
+			zap.S().Warnw("cannot check level enabled", "key", req.GetStorageKey(), "error", err)
 			continue
 		}
 		ttl, err := s.getTtl(req)
 		if err != nil {
-			log.Printf("cannot get ttl for key %q: %v", req.GetStorageKey(), err)
+			zap.S().Warnw("cannot get ttl", "key", req.GetStorageKey(), "error", err)
 			continue
 		}
 		if !enabled {
@@ -197,7 +198,7 @@ func (s *ServiceImpl) categorizeRequests(reqs []*dto.ResolvedCacheId) (keyToRequ
 
 		enabled, err := s.isEnabled(req)
 		if err != nil {
-			log.Printf("cannot check if level is enabled for key %q: %v", req.GetStorageKey(), err)
+			zap.S().Warnw("cannot check level enabled", "key", req.GetStorageKey(), "error", err)
 			continue
 		}
 

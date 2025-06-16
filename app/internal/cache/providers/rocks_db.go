@@ -27,10 +27,11 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
-	"log"
 	"strconv"
 	"sync"
 	"time"
+
+	"go.uber.org/zap"
 
 	"github.com/linxGnu/grocksdb"
 )
@@ -300,11 +301,11 @@ func (c *RocksDbCF) BatchDelete(ctx context.Context, keys []string) (err error) 
 // StartTTLCollector launches a goroutine that every `interval` scans the ttl_cf
 // and hard‑deletes expired keys. Cancel the ctx to stop the cleaner.
 func (c *RocksDbCF) StartTTLCollector(ctx context.Context, interval time.Duration) {
-	log.Printf("rocksdb TTL collector started with interval %s", interval)
+	zap.S().Infow("rocksdb TTL collector started", "interval", interval)
 	go func() {
 		ticker := time.NewTicker(interval)
 		defer ticker.Stop()
-		defer log.Printf("rocksdb TTL collector stopped")
+		defer zap.S().Info("rocksdb TTL collector stopped")
 		for {
 			select {
 			case <-ctx.Done():

@@ -6,8 +6,9 @@ import (
 	"context"
 	"fmt"
 	"github.com/redis/go-redis/v9"
-	"log"
 	"time"
+
+	"go.uber.org/zap"
 )
 
 type Redis struct {
@@ -35,7 +36,7 @@ func NewRedis(ctx context.Context, cfg config.Redis) (*Redis, error) {
 		return nil, fmt.Errorf("не удалось подключиться к Redis: %w", err)
 	}
 
-	log.Printf("connected to Redis %s:%d", cfg.Host, cfg.Port)
+	zap.S().Infow("connected to Redis", "host", cfg.Host, "port", cfg.Port)
 
 	return &Redis{
 		rdb: rdb,
@@ -102,7 +103,7 @@ func (c *Redis) BatchPut(ctx context.Context, items map[string]string, ttls map[
 
 		_, err = pipe.Exec(ctx)
 		if err != nil {
-			log.Printf("redis pipeline exec error on chunk %d: %v", chunkIndex, err)
+			zap.S().Errorw("redis pipeline exec error", "chunk", chunkIndex, "error", err)
 			return fmt.Errorf("ошибка пакетного сохранения в Redis (chunk %d): %w", chunkIndex, err)
 		}
 	}
@@ -127,7 +128,7 @@ func (c *Redis) BatchDelete(ctx context.Context, keys []string) (err error) {
 	for chunkIndex, chunk := range chunks {
 		_, err = c.rdb.Unlink(ctx, chunk...).Result()
 		if err != nil {
-			log.Printf("redis unlink error on chunk %d of %d: %v", chunkIndex+1, len(chunks), err)
+			zap.S().Errorw("redis unlink error", "chunk", chunkIndex+1, "total", len(chunks), "error", err)
 			return fmt.Errorf("ошибка пакетного удаления из Redis (chunk %d/%d, keys: %d): %w",
 				chunkIndex+1, len(chunks), len(chunk), err)
 		}

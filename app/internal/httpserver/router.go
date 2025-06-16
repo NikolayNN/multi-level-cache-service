@@ -6,11 +6,12 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 	"strings"
 	"sync"
+
+	"go.uber.org/zap"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -98,7 +99,7 @@ func handleSingle(w http.ResponseWriter, r *http.Request, adapter manager.Manage
 		}
 		w.Header().Set("Content-Type", contentTypeJSON)
 		if err := json.NewEncoder(w).Encode(hit); err != nil {
-			log.Printf("encode error: %v", err)
+			zap.S().Errorw("encode error", "error", err)
 		}
 
 	case http.MethodPut:
@@ -183,7 +184,7 @@ func handleBatchGet(w http.ResponseWriter, r *http.Request, adapter manager.Mana
 
 	w.Header().Set("Content-Type", contentTypeJSON)
 	if err := json.NewEncoder(w).Encode(map[string]interface{}{"results": results}); err != nil {
-		log.Printf("encode error: %v", err)
+		zap.S().Errorw("encode error", "error", err)
 	}
 }
 
@@ -306,7 +307,7 @@ func compressGzip(threshold int) func(http.Handler) http.Handler {
 			w.WriteHeader(brw.code)
 			gz := gzip.NewWriter(w)
 			if _, err := gz.Write([]byte(data)); err != nil {
-				log.Printf("gzip write error: %v", err)
+				zap.S().Errorw("gzip write error", "error", err)
 			}
 			gz.Close()
 		})

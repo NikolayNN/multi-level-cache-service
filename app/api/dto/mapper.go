@@ -2,7 +2,7 @@ package dto
 
 import (
 	"aur-cache-service/internal/cache/config"
-	"log"
+	"go.uber.org/zap"
 )
 
 type ResolverMapper struct {
@@ -20,7 +20,7 @@ func (s *ResolverMapper) MapAllResolvedCacheEntry(cacheEntries []*CacheEntry) []
 	for _, cacheEntry := range cacheEntries {
 		resolved, err := s.mapResolvedCacheEntry(cacheEntry)
 		if err != nil {
-			log.Printf("ERROR: while resolve cacheEntry: %+v, %v", cacheEntry, err)
+			zap.S().Errorw("while resolve cacheEntry", "cacheEntry", cacheEntry, "error", err)
 		} else {
 			resolvedList = append(resolvedList, resolved)
 		}
@@ -44,7 +44,7 @@ func (s *ResolverMapper) MapAllResolvedCacheId(cacheIds []*CacheId) []*ResolvedC
 	for _, cacheId := range cacheIds {
 		resolved, err := s.mapResolvedCacheId(cacheId)
 		if err != nil {
-			log.Printf("ERROR: while resolve cacheId: %+v, %v", cacheId, err)
+			zap.S().Errorw("while resolve cacheId", "cacheId", cacheId, "error", err)
 		} else {
 			resolvedList = append(resolvedList, resolved)
 		}
