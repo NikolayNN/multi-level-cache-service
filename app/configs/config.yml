@@ -113,6 +113,7 @@ caches:
       - enabled: true
         ttl: 6h
     Api:
+      enabled: true
       getBatch:
         timeout: 10s
         url: "localhost:8080/user"
