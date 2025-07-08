@@ -1,6 +1,6 @@
 FROM golang:1.24-bullseye AS builder
 
-ARG ROCKSDB_VERSION=10.4.0
+ARG ROCKSDB_VERSION=10.2.1
 
 # Install build dependencies
 RUN apt-get update \
@@ -13,6 +13,7 @@ RUN apt-get update \
         libbz2-dev \
         liblz4-dev \
         libzstd-dev \
+        libgflags-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Build RocksDB
