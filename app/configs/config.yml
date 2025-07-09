@@ -50,7 +50,7 @@ providers:
     type: "rocksdb"
 
     # Путь к папке, где будут лежать SST-файлы RocksDB.
-    path: "/home/wsl-user/rocksdb-db"
+    path: "/var/lib/rocksdb"
 
     # Создаёт базу, если путь не существует.
     createIfMissing: true
