@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	configFilePath  = "configs/config.yml"
+	configFilePath  = "/configs/config.yml"
 	putAllTimeout   = 10 * time.Second
 	evictAllTimeout = 10 * time.Second
 	port            = 8080
