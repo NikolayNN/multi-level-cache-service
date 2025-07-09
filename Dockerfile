@@ -38,7 +38,7 @@ COPY cli/ ./
 RUN go build -o /bin/cli ./
 
 FROM debian:bullseye-slim
-COPY --from=builder /usr/local/lib/ /usr/local/lib/
+COPY --from=builder --link /usr/local/lib/ /usr/local/lib/
 COPY --from=builder /usr/local/include/ /usr/local/include/
 COPY --from=builder /bin/service /usr/local/bin/service
 COPY --from=builder /bin/cli /usr/local/bin/cli
