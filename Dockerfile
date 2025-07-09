@@ -1,7 +1,7 @@
 # ---------- Stage 1: build Go (Alpine) --------------------
 FROM golang:1.24-alpine AS builder
 # инструменты для CGO + заголовки/библиотеки RocksDB
-RUN apk add --no-cache build-base rocksdb-dev>=10.2     # ← добавлен build-base
+RUN apk add --no-cache build-base rocksdb-dev>=10.2
 
 WORKDIR /app
 COPY app/go.mod app/go.sum ./
@@ -18,7 +18,6 @@ FROM alpine:edge
 RUN apk add --no-cache libstdc++ rocksdb>=10.2
 COPY --from=builder /bin/service /usr/local/bin/service
 COPY --from=builder /bin/cli     /usr/local/bin/cli
-COPY app/configs/config.yml /configs/config.yml
 
 EXPOSE 8080
 CMD ["service"]
