@@ -5,6 +5,7 @@ import (
 	"aur-cache-service/internal/manager"
 	"compress/gzip"
 	"encoding/json"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"io"
 	"net/http"
 	"strings"
@@ -14,7 +15,6 @@ import (
 	"telegram-alerts-go/alert"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 const (
@@ -32,13 +32,16 @@ const (
 	metricsPath           = "/metrics"                 // Путь для метрик Prometheus
 )
 
-// NewRouter возвращает http.Handler с зарегистрированными эндпоинтами.
-func NewRouter(adapter manager.ManagerAdapter) http.Handler {
+func NewMetricRouter() http.Handler {
 	metric_router := chi.NewRouter()
 
 	// /metrics хендлер без middleware
 	metric_router.Method(http.MethodGet, "/metrics", promhttp.Handler())
+	return metric_router
+}
 
+// NewRouter возвращает http.Handler с зарегистрированными эндпоинтами.
+func NewRouter(adapter manager.ManagerAdapter) http.Handler {
 	api_router := chi.NewRouter()
 
 	api_router.Use(limitBody(maxBodySize))

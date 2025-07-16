@@ -12,6 +12,7 @@ import (
 	"go.uber.org/zap"
 	"log"
 	"net/http"
+	"sync"
 	"time"
 
 	"telegram-alerts-go/alert"
@@ -21,7 +22,8 @@ const (
 	configFilePath  = "/configs/config.yml"
 	putAllTimeout   = 10 * time.Second
 	evictAllTimeout = 10 * time.Second
-	port            = 8080
+	portApi         = 8080
+	portMetrics     = 9080
 )
 
 func main() {
@@ -43,8 +45,35 @@ func main() {
 
 	mainAdapter := manager.CreateAsyncManagerAdapter(mapper, layersCacheController, httpCacheController, putAllTimeout, evictAllTimeout)
 
-	router := httpserver.NewRouter(&mainAdapter)
+	routerApi := httpserver.NewRouter(&mainAdapter)
+	routerMetrics := httpserver.NewMetricRouter()
 
+	// запуск двух HTTP-серверов параллельно (в отдельных горутинах),
+	// и ожидание их завершения через sync.WaitGroup
+	//
+	// Это нужно, чтобы:
+	// - main-функция не завершилась раньше времени
+	// - оба сервера работали одновременно
+	//
+	// Без этого программа бы завершилась сразу после запуска горутин.
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	go func() {
+		defer wg.Done()
+		listenServer(routerApi, portApi)
+	}()
+
+	go func() {
+		defer wg.Done()
+		listenServer(routerMetrics, portMetrics)
+	}()
+
+	wg.Wait()
+	//// end
+}
+
+func listenServer(router http.Handler, port int) {
 	srv := &http.Server{
 		Addr:    fmt.Sprintf(":%d", port),
 		Handler: router,
