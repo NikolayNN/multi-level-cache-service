@@ -140,3 +140,15 @@ func TestGzipDecompress(t *testing.T) {
 		t.Fatalf("code=%d", rr.Code)
 	}
 }
+
+func TestMetricsNoGzip(t *testing.T) {
+	adapter := &mockAdapter{}
+	router := NewRouter(adapter)
+	req := httptest.NewRequest(http.MethodGet, metricsPath, nil)
+	req.Header.Set("Accept-Encoding", encodingGzip)
+	rr := httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+	if rr.Header().Get(headerContentEncoding) == encodingGzip {
+		t.Fatalf("/metrics response should not be gzipped")
+	}
+}

@@ -29,33 +29,37 @@ const (
 	headerAcceptEncoding  = "Accept-Encoding"          // HTTP заголовок с поддерживаемыми кодировками
 	headerVary            = "Vary"                     // HTTP заголовок для указания зависимости от других заголовков
 	encodingGzip          = "gzip"                     // Название gzip кодировки
+	metricsPath           = "/metrics"                 // Путь для метрик Prometheus
 )
 
 // NewRouter возвращает http.Handler с зарегистрированными эндпоинтами.
 func NewRouter(adapter manager.ManagerAdapter) http.Handler {
-	r := chi.NewRouter()
+	metric_router := chi.NewRouter()
 
-	r.Use(limitBody(maxBodySize))
-	r.Use(decompressGzip)
-	r.Use(compressGzip(gzipThreshold))
-	r.Use(MetricsMiddleware)
+	// /metrics хендлер без middleware
+	metric_router.Method(http.MethodGet, "/metrics", promhttp.Handler())
 
-	r.Method(http.MethodGet, "/metrics", promhttp.Handler())
+	api_router := chi.NewRouter()
 
-	r.Post(getAllPath, func(w http.ResponseWriter, r *http.Request) {
+	api_router.Use(limitBody(maxBodySize))
+	api_router.Use(decompressGzip)
+	api_router.Use(compressGzip(gzipThreshold))
+	api_router.Use(MetricsMiddleware)
+
+	api_router.Post(getAllPath, func(w http.ResponseWriter, r *http.Request) {
 		handleBatchGet(w, r, adapter)
 	})
-	r.Post(putAllPath, func(w http.ResponseWriter, r *http.Request) {
+	api_router.Post(putAllPath, func(w http.ResponseWriter, r *http.Request) {
 		handleBatchPut(w, r, adapter)
 	})
-	r.Post(evictAllPath, func(w http.ResponseWriter, r *http.Request) {
+	api_router.Post(evictAllPath, func(w http.ResponseWriter, r *http.Request) {
 		handleBatchDelete(w, r, adapter)
 	})
 
 	// ранее здесь регистрировались одиночные операции GET, PUT и DELETE.
 	// Они убраны, чтобы оставались только batch эндпоинты.
 
-	return r
+	return api_router
 }
 
 type batchRequest struct {
