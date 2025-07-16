@@ -61,25 +61,25 @@ func main() {
 
 	go func() {
 		defer wg.Done()
-		listenServer(routerApi, portApi)
+		listenServer("api", routerApi, portApi)
 	}()
 
 	go func() {
 		defer wg.Done()
-		listenServer(routerMetrics, portMetrics)
+		listenServer("metrics", routerMetrics, portMetrics)
 	}()
 
 	wg.Wait()
 	//// end
 }
 
-func listenServer(router http.Handler, port int) {
+func listenServer(serverName string, router http.Handler, port int) {
 	srv := &http.Server{
 		Addr:    fmt.Sprintf(":%d", port),
 		Handler: router,
 	}
 
-	zap.S().Infow("starting server", "addr", srv.Addr)
+	zap.S().Infow("starting server", "name", serverName, "addr", srv.Addr)
 	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		zap.S().Fatalw(alert.Prefix("server error"), "error", err)
 	}
