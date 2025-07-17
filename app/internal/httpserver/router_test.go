@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -150,5 +151,18 @@ func TestMetricsNoGzip(t *testing.T) {
 	router.ServeHTTP(rr, req)
 	if rr.Header().Get(headerContentEncoding) == encodingGzip {
 		t.Fatalf("/metrics response should not be gzipped")
+	}
+}
+
+func TestMetricsHealth(t *testing.T) {
+	router := NewMetricRouter()
+	req := httptest.NewRequest(http.MethodGet, metricsHealthPath, nil)
+	rr := httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("code=%d", rr.Code)
+	}
+	if body := strings.TrimSpace(rr.Body.String()); body != `{"status":"UP"}` {
+		t.Fatalf("unexpected body: %s", body)
 	}
 }
