@@ -30,13 +30,20 @@ const (
 	headerVary            = "Vary"                     // HTTP заголовок для указания зависимости от других заголовков
 	encodingGzip          = "gzip"                     // Название gzip кодировки
 	metricsPath           = "/metrics"                 // Путь для метрик Prometheus
+	metricsHealthPath     = "/metrics/health"          // Путь для проверки состояния
 )
 
 func NewMetricRouter() http.Handler {
 	metric_router := chi.NewRouter()
 
 	// /metrics хендлер без middleware
-	metric_router.Method(http.MethodGet, "/metrics", promhttp.Handler())
+	metric_router.Method(http.MethodGet, metricsPath, promhttp.Handler())
+
+	// /metrics/health хендлер без middleware
+	metric_router.Method(http.MethodGet, metricsHealthPath, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", contentTypeJSON)
+		io.WriteString(w, `{"status":"UP"}`)
+	}))
 	return metric_router
 }
 
