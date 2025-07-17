@@ -3,6 +3,8 @@ FROM golang:1.24-alpine AS builder
 # инструменты для CGO + заголовки/библиотеки RocksDB
 RUN apk add --no-cache build-base rocksdb-dev>=10.2
 
+RUN apk add --no-cache curl # для работы healthcheck
+
 WORKDIR /app
 COPY app/go.mod app/go.sum ./
 RUN go mod download
