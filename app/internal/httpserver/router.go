@@ -160,7 +160,7 @@ func handleBatchPut(w http.ResponseWriter, r *http.Request, adapter manager.Mana
 		entries[i] = &req.Requests[i]
 	}
 	adapter.PutAll(r.Context(), entries)
-	zap.S().Infow("processed batch put", "requests", req.Requests)
+	zap.S().Infow("processed batch put", "records", len(req.Requests))
 	w.WriteHeader(http.StatusOK)
 }
 
