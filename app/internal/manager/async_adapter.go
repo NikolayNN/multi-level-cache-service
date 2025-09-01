@@ -97,9 +97,9 @@ func (a *AsyncManagerAdapter) runAsync(name string, f func(ctx context.Context),
 			}
 		}()
 
-		zap.S().Infow("async started", "name", name)
+		zap.S().Debugw("async started", "name", name)
 		f(ctx)
-		zap.S().Infow("async finished", "name", name)
+		zap.S().Debugw("async finished", "name", name)
 	}()
 }
 

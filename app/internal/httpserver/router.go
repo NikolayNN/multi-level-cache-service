@@ -129,7 +129,7 @@ func handleBatchGet(w http.ResponseWriter, r *http.Request, adapter manager.Mana
 		}
 	}
 
-	zap.S().Infow("processed batch get", "requests", req.Requests, "results", results)
+	zap.S().Infow("processed batch get", "req", len(req.Requests), "results", len(results))
 
 	w.Header().Set("Content-Type", contentTypeJSON)
 	if err := json.NewEncoder(w).Encode(map[string]interface{}{"results": results}); err != nil {
@@ -187,7 +187,7 @@ func handleBatchDelete(w http.ResponseWriter, r *http.Request, adapter manager.M
 		ids[i] = &req.Requests[i]
 	}
 	adapter.EvictAll(r.Context(), ids)
-	zap.S().Infow("processed batch delete", "requests", req.Requests)
+	zap.S().Infow("processed batch delete", "records", len(req.Requests))
 	w.WriteHeader(http.StatusOK)
 }
 
